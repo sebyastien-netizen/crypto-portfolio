@@ -28,31 +28,44 @@
     </header>
 
 <nav>
-  <button class="nav-btn active" data-tab="trades-perp">Trades PERP</button>
+  <button class="nav-btn active" data-tab="dashboard">Dashboard</button>
+  <button class="nav-btn" data-tab="trades-perp">Trades PERP</button>
   <button class="nav-btn" data-tab="spot">Portfolio Spot</button>
   <button class="nav-btn" data-tab="bots">Bots Pionex</button>
+  <button class="nav-btn" data-tab="pools">Pools LP</button>
   <button class="nav-btn" data-tab="positions">Staking / Lending</button>
 </nav>
 
-    <!-- ONGLET TRADES PERP -->
-    <section id="tab-trades-perp" class="tab active">
-      <div class="recap-bar">
-        <div class="recap-card">
-          <span class="label">Total 2026</span>
-          <span class="value" id="total-pnl">—</span>
-        </div>
-        <div class="recap-card">
-          <span class="label">Trades</span>
-          <span class="value" id="total-trades">—</span>
-        </div>
-        <div class="recap-card">
-          <span class="label">Taux de réussite</span>
-          <span class="value" id="taux-reussite">—</span>
-        </div>
-      </div>
 
-      <div id="trades-par-mois"></div>
-    </section>
+<!-- ONGLET DASHBOARD -->
+<section id="tab-dashboard" class="tab active">
+  <div class="recap-bar">
+    <div class="recap-card">
+      <span class="label">Portfolio total</span>
+      <span class="value" id="dash-total">—</span>
+    </div>
+  </div>
+  <div id="dash-details"></div>
+</section>
+
+<!-- ONGLET TRADES PERP -->
+<section id="tab-trades-perp" class="tab hidden">
+  <div class="recap-bar">
+    <div class="recap-card">
+      <span class="label">Total 2026</span>
+      <span class="value" id="total-pnl">—</span>
+    </div>
+    <div class="recap-card">
+      <span class="label">Trades</span>
+      <span class="value" id="total-trades">—</span>
+    </div>
+    <div class="recap-card">
+      <span class="label">Taux de réussite</span>
+      <span class="value" id="taux-reussite">—</span>
+    </div>
+  </div>
+  <div id="trades-par-mois"></div>
+</section>
 <!-- ONGLET SPOT -->
 <section id="tab-spot" class="tab hidden">
 
@@ -113,7 +126,18 @@
       </div>
       <div id="bots-liste"></div>
     </section>
-
+    
+<!-- ONGLET POOLS LP -->
+<section id="tab-pools" class="tab hidden">
+  <div class="recap-bar">
+    <div class="recap-card">
+      <span class="label">Valeur totale pools</span>
+      <span class="value" id="pools-total">—</span>
+    </div>
+  </div>
+  <div id="pools-liste"></div>
+</section>
+    
 <!-- ONGLET STAKING / LENDING -->
 <section id="tab-positions" class="tab hidden">
 
