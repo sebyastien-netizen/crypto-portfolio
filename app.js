@@ -146,7 +146,10 @@ function formatMois(str) {
 document.getElementById('btn-login').addEventListener('click', login);
 document.getElementById('btn-logout').addEventListener('click', logout);
 document.querySelectorAll('.nav-btn').forEach(btn => {
-  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  btn.addEventListener('click', () => {
+    switchTab(btn.dataset.tab);
+    if (btn.dataset.tab === 'spot') chargerSpot();
+  });
 });
 // ─── SPOT PORTFOLIO ──────────────────────────────────
 
