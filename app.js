@@ -162,6 +162,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     switchTab(btn.dataset.tab);
     if (btn.dataset.tab === 'spot') chargerSpot();
+    if (btn.dataset.tab === 'bots') chargerBots();
     if (btn.dataset.tab === 'positions') chargerStaking();
   });
 });
