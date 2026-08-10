@@ -469,12 +469,12 @@ async function renderBots(bots) {
   bots.forEach(bot => {
     const prixLive = prix[bot.coingecko_id]?.usd || null;
     const capitalTotal = bot.capital_investi + bot.marge_supplementaire;
-    const valeurPosition = prixLive ? prixLive * bot.quantite_token : null;
-    const pnlTendance = valeurPosition ? valeurPosition - (bot.quantite_token * (capitalTotal / bot.quantite_token)) : bot.pnl_tendance;
-    const gainNet = bot.grid_profit + bot.pnl_tendance;
+const valeurPosition = prixLive ? prixLive * bot.quantite_token : null;
+const gainNet = bot.grid_profit + bot.pnl_tendance;
+const valeurCompte = capitalTotal + gainNet;
 
-    totalCapital += capitalTotal;
-    if (valeurPosition) totalValeur += valeurPosition;
+totalCapital += capitalTotal;
+totalValeur += valeurCompte;
     totalGrid += bot.grid_profit;
     totalPnl += gainNet;
 
@@ -516,10 +516,14 @@ async function renderBots(bots) {
           <span class="label">Capital engagé</span>
           <span class="val">${capitalTotal.toLocaleString('fr-FR', { style:'currency', currency:'USD' })}</span>
         </div>
-        <div class="bot-stat">
-          <span class="label">Position (${bot.quantite_token} ${bot.token})</span>
-          <span class="val">${valeurPosition ? valeurPosition.toLocaleString('fr-FR', { style:'currency', currency:'USD' }) : '—'}</span>
-        </div>
+<div class="bot-stat">
+  <span class="label">Valeur compte</span>
+  <span class="val">${valeurCompte.toLocaleString('fr-FR', { style:'currency', currency:'USD' })}</span>
+</div>
+<div class="bot-stat">
+  <span class="label">Exposition (${bot.quantite_token} ${bot.token})</span>
+  <span class="val" style="color:#718096">${valeurPosition ? valeurPosition.toLocaleString('fr-FR', { style:'currency', currency:'USD' }) : '—'}</span>
+</div>
         <div class="bot-stat">
           <span class="label">Grid profit ✏️</span>
           <span class="val editable">
