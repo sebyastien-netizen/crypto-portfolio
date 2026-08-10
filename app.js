@@ -553,7 +553,7 @@ totalValeur += valeurCompte;
         <div class="sim-row">
           <span>Si ${bot.token} atteint</span>
           <input type="number" id="sim-input-${bot.id}" placeholder="Prix en $" step="any"
-            oninput="simulerBot('${bot.id}', ${bot.quantite_token}, ${capitalTotal}, ${bot.grid_profit}, ${bot.prix_detention_moyen || 0}, ${bot.levier})"
+            oninput="simulerBot('${bot.id}', ${bot.quantite_token}, ${capitalTotal}, ${bot.grid_profit}, ${bot.pnl_tendance}, ${bot.levier}, ${prixLive || 0})"
           <span>$</span>
         </div>
         <div class="sim-result" id="sim-result-${bot.id}"></div>
@@ -576,20 +576,22 @@ totalValeur += valeurCompte;
 }
 
 // Simulateur
-function simulerBot(botId, quantite, capitalTotal, gridProfit, prixDetention, levier) {
+function simulerBot(botId, quantite, capitalTotal, gridProfit, pnlTendanceActuel, levier, prixLive) {
   const input = document.getElementById(`sim-input-${botId}`);
   const result = document.getElementById(`sim-result-${botId}`);
   const prixCible = parseFloat(input.value);
-  if (!prixCible || isNaN(prixCible)) { result.textContent = ''; return; }
+  if (!prixCible || isNaN(prixCible) || !prixLive) { result.textContent = ''; return; }
 
-  // PnL tendance = variation de prix × quantité × levier
-  const pnlTendanceSim = (prixCible - prixDetention) * quantite * levier;
+  // Delta depuis état actuel
+  const deltaPrix = prixCible - prixLive;
+  const pnlTendanceSim = pnlTendanceActuel + (deltaPrix * quantite * levier);
   const gainNetSim = gridProfit + pnlTendanceSim;
   const pct = ((gainNetSim / capitalTotal) * 100).toFixed(2);
   const signe = gainNetSim >= 0 ? '+' : '';
+  const signePnl = pnlTendanceSim >= 0 ? '+' : '';
 
   result.innerHTML = `
-    PnL tendance simulé : <strong class="${pnlTendanceSim >= 0 ? 'pos' : 'neg'}">${pnlTendanceSim.toLocaleString('fr-FR', { style:'currency', currency:'USD' })}</strong>
+    PnL tendance simulé : <strong class="${pnlTendanceSim >= 0 ? 'pos' : 'neg'}">${signePnl}${pnlTendanceSim.toLocaleString('fr-FR', { style:'currency', currency:'USD' })}</strong>
     &nbsp;|&nbsp;
     Gain net estimé : <strong class="${gainNetSim >= 0 ? 'pos' : 'neg'}">${signe}${gainNetSim.toLocaleString('fr-FR', { style:'currency', currency:'USD' })} (${signe}${pct} %)</strong>
   `;
