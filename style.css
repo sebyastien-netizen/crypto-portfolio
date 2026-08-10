@@ -147,3 +147,94 @@ nav {
 /* UTILITAIRES */
 .hidden { display: none !important; }
 .empty { color: #4a5568; font-style: italic; padding: 2rem 0; }
+
+/* FORMULAIRE */
+.form-bloc {
+  background: #1a1f2e;
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.form-bloc h3 {
+  font-size: 0.9rem;
+  color: #a0aec0;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.form-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.form-row input, .form-row select {
+  background: #0f1117;
+  border: 1px solid #2d3748;
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  color: #e2e8f0;
+  font-size: 0.9rem;
+  flex: 1;
+  min-width: 130px;
+}
+.form-row button {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.form-hint {
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+  color: #4a5568;
+}
+
+/* WALLET BLOC SPOT */
+.wallet-bloc {
+  margin-bottom: 2rem;
+}
+.wallet-titre {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+  color: #a0aec0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.wallet-total { font-size: 1rem; color: #e2e8f0; }
+
+/* SPOT TABLE */
+.spot-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.spot-table th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  color: #718096;
+  font-weight: 500;
+  border-bottom: 1px solid #2d3748;
+}
+.spot-table td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #1e2535;
+}
+.spot-table tr:last-child td { border-bottom: none; }
+.btn-delete {
+  background: none;
+  border: none;
+  color: #4a5568;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0;
+}
+.btn-delete:hover { color: #fc8181; }
+.prix-loading { color: #4a5568; font-style: italic; }
