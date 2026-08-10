@@ -30,6 +30,7 @@
 <nav>
   <button class="nav-btn active" data-tab="trades-perp">Trades PERP</button>
   <button class="nav-btn" data-tab="spot">Portfolio Spot</button>
+  <button class="nav-btn" data-tab="bots">Bots Pionex</button>
   <button class="nav-btn" data-tab="positions">Staking / Lending</button>
 </nav>
 
@@ -89,6 +90,30 @@
   <div id="spot-par-wallet"></div>
 
 </section>
+
+    <!-- ONGLET BOTS PIONEX -->
+    <section id="tab-bots" class="tab hidden">
+      <div class="recap-bar">
+        <div class="recap-card">
+          <span class="label">Capital total engagé</span>
+          <span class="value" id="bots-capital">—</span>
+        </div>
+        <div class="recap-card">
+          <span class="label">Valeur positions live</span>
+          <span class="value" id="bots-valeur">—</span>
+        </div>
+        <div class="recap-card">
+          <span class="label">Grid profit total</span>
+          <span class="value" id="bots-grid">—</span>
+        </div>
+        <div class="recap-card">
+          <span class="label">PnL net total</span>
+          <span class="value" id="bots-pnl">—</span>
+        </div>
+      </div>
+      <div id="bots-liste"></div>
+    </section>
+
 <!-- ONGLET STAKING / LENDING -->
 <section id="tab-positions" class="tab hidden">
 
