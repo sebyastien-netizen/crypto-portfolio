@@ -27,10 +27,11 @@
       <button id="btn-logout">Déconnexion</button>
     </header>
 
-    <nav>
-      <button class="nav-btn active" data-tab="trades-perp">Trades PERP</button>
-      <button class="nav-btn" data-tab="positions">Staking / Lending</button>
-    </nav>
+<nav>
+  <button class="nav-btn active" data-tab="trades-perp">Trades PERP</button>
+  <button class="nav-btn" data-tab="spot">Portfolio Spot</button>
+  <button class="nav-btn" data-tab="positions">Staking / Lending</button>
+</nav>
 
     <!-- ONGLET TRADES PERP -->
     <section id="tab-trades-perp" class="tab active">
@@ -51,7 +52,43 @@
 
       <div id="trades-par-mois"></div>
     </section>
+<!-- ONGLET SPOT -->
+<section id="tab-spot" class="tab hidden">
 
+  <div class="recap-bar">
+    <div class="recap-card">
+      <span class="label">Valeur totale</span>
+      <span class="value" id="spot-total">—</span>
+    </div>
+    <div class="recap-card">
+      <span class="label">Positions</span>
+      <span class="value" id="spot-count">—</span>
+    </div>
+  </div>
+
+  <!-- FORMULAIRE AJOUT -->
+  <div class="form-bloc">
+    <h3>Ajouter une position</h3>
+    <div class="form-row">
+      <select id="spot-wallet">
+        <option value="kraken-seb">Kraken</option>
+        <option value="rabby-seb">Rabby Wallet</option>
+        <option value="pionex-seb">Pionex</option>
+      </select>
+      <input type="text" id="spot-token" placeholder="Token (ex: BTC)" />
+      <input type="text" id="spot-coingecko" placeholder="ID CoinGecko (ex: bitcoin)" />
+      <input type="number" id="spot-quantite" placeholder="Quantité" step="any" />
+      <button id="btn-add-spot">+ Ajouter</button>
+    </div>
+    <p class="form-hint">
+      L'ID CoinGecko se trouve sur la page du token : coingecko.com/en/coins/<strong>bitcoin</strong>
+    </p>
+  </div>
+
+  <!-- LISTE PAR WALLET -->
+  <div id="spot-par-wallet"></div>
+
+</section>
     <!-- ONGLET STAKING / LENDING -->
     <section id="tab-positions" class="tab hidden">
       <p class="empty">Aucune position passive enregistrée.</p>
