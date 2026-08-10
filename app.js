@@ -1295,7 +1295,7 @@ async function chargerScanner() {
     let btcDaily = null;
     if (btcToken) {
       btcDaily = await fetchOHLC('bitcoin', 365);
-      await new Promise(r => setTimeout(r, 700));
+      await new Promise(r => setTimeout(r, 1500));
     }
 
     const results = [];
@@ -1303,10 +1303,10 @@ async function chargerScanner() {
       try {
         const daily = (t.token === 'BTC' && btcDaily) ? btcDaily
           : await fetchOHLC(t.coingecko_id, 365);
-        if (t.token !== 'BTC') await new Promise(r => setTimeout(r, 700));
+        if (t.token !== 'BTC') await new Promise(r => setTimeout(r, 1500));
 
         const h4 = await fetchOHLC(t.coingecko_id, 30);
-        await new Promise(r => setTimeout(r, 700));
+        await new Promise(r => setTimeout(r, 1500));
 
         const result = analyserDepuisDonnees(t.token, t.coingecko_id, daily, h4, btcDaily);
         results.push(result);
