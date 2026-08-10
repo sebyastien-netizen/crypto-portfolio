@@ -553,7 +553,7 @@ totalValeur += valeurCompte;
         <div class="sim-row">
           <span>Si ${bot.token} atteint</span>
           <input type="number" id="sim-input-${bot.id}" placeholder="Prix en $" step="any"
-            oninput="simulerBot('${bot.id}', ${bot.quantite_token}, ${bot.capital_investi}, ${bot.grid_profit}, ${bot.pnl_tendance}, ${bot.levier}, ${prixLive || 0})"
+            oninput="simulerBot('${bot.id}', ${bot.capital_investi}, ${bot.grid_profit}, ${gainNet}, ${prixLive || 0}, 0.1246)"
           <span>$</span>
         </div>
         <div class="sim-result" id="sim-result-${bot.id}"></div>
@@ -576,26 +576,22 @@ totalValeur += valeurCompte;
 }
 
 // Simulateur
-function simulerBot(botId, quantite, capitalInvesti, gridProfit, pnlTendanceActuel, levier, prixLive) {
+function simulerBot(botId, capitalInvesti, gridProfit, pnlActuel, prixLive, pente) {
   const input = document.getElementById(`sim-input-${botId}`);
   const result = document.getElementById(`sim-result-${botId}`);
   const prixCible = parseFloat(input.value);
   if (!prixCible || isNaN(prixCible) || !prixLive) { result.textContent = ''; return; }
 
   const deltaPrix = prixCible - prixLive;
-  const pnlTendanceSim = pnlTendanceActuel + (deltaPrix * quantite * levier);
-  const gainNetSim = gridProfit + pnlTendanceSim;
+  const gainNetSim = pnlActuel + (deltaPrix * pente);
   const pct = ((gainNetSim / capitalInvesti) * 100).toFixed(2);
   const signe = gainNetSim >= 0 ? '+' : '';
-  const signePnl = pnlTendanceSim >= 0 ? '+' : '';
 
   result.innerHTML = `
-    PnL tendance simulé : <strong class="${pnlTendanceSim >= 0 ? 'pos' : 'neg'}">${signePnl}${pnlTendanceSim.toLocaleString('fr-FR', { style:'currency', currency:'USD' })}</strong>
-    &nbsp;|&nbsp;
-    Gain net : <strong class="${gainNetSim >= 0 ? 'pos' : 'neg'}">${signe}${gainNetSim.toLocaleString('fr-FR', { style:'currency', currency:'USD' })} (${signe}${pct} % sur capital investi)</strong>
+    Gain net estimé : <strong class="${gainNetSim >= 0 ? 'pos' : 'neg'}">${signe}${gainNetSim.toLocaleString('fr-FR', { style:'currency', currency:'USD' })} (${signe}${pct} % sur capital investi)</strong>
+    <br><small style="color:#4a5568">Breakeven estimé : ${Math.round(prixLive - (pnlActuel / pente)).toLocaleString()} $</small>
   `;
 }
-
 // Édition grid profit
 async function editGrid(botId, valeurActuelle) {
   const nouvelleValeur = prompt('Nouveau grid profit (USDT) :', valeurActuelle);
