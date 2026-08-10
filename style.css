@@ -238,3 +238,41 @@ nav {
 }
 .btn-delete:hover { color: #fc8181; }
 .prix-loading { color: #4a5568; font-style: italic; }
+/* STAKING */
+.protocole-bloc { margin-bottom: 2rem; }
+.protocole-titre {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+  color: #a0aec0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.staking-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.staking-table th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  color: #718096;
+  font-weight: 500;
+  border-bottom: 1px solid #2d3748;
+}
+.staking-table td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #1e2535;
+}
+.staking-table tr:last-child td { border-bottom: none; }
+.badge-staking {
+  background: #2d3748;
+  color: #68d391;
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
