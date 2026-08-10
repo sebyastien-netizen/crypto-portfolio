@@ -466,8 +466,9 @@ async function renderBots(bots) {
   let prix = {};
   if (ids.length) {
     try {
-      const cgRes = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd`
+const cgRes = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd&t=${Date.now()}`,
+        { cache: 'no-store' }
       );
       prix = await cgRes.json();
     } catch (e) { console.error('CoinGecko indisponible', e); }
