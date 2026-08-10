@@ -939,3 +939,378 @@ const quantite = parseFloat(document.getElementById('perp-quantite').value);
 
   chargerTrades();
 }
+// ─── SCANNER DE SETUP ────────────────────────────────
+
+let scannerResults = [];
+
+// ── Fonctions mathématiques ──────────────────────────
+
+function calcMA(closes, period) {
+  if (!closes || closes.length < period) return null;
+  return closes.slice(-period).reduce((s, v) => s + v, 0) / period;
+}
+
+function calcBollinger(closes, period = 20, mult = 2) {
+  if (!closes || closes.length < period) return null;
+  const slice = closes.slice(-period);
+  const ma = slice.reduce((s, v) => s + v, 0) / period;
+  const variance = slice.reduce((s, v) => s + Math.pow(v - ma, 2), 0) / period;
+  const std = Math.sqrt(variance);
+  return {
+    upper: ma + mult * std,
+    middle: ma,
+    lower: ma - mult * std,
+    bandwidth: std / ma
+  };
+}
+
+function calcRSI(closes, period = 14) {
+  if (!closes || closes.length < period + 1) return null;
+  const slice = closes.slice(-(period + 1));
+  let gains = 0, losses = 0;
+  for (let i = 1; i < slice.length; i++) {
+    const diff = slice[i] - slice[i - 1];
+    if (diff > 0) gains += diff;
+    else losses -= diff;
+  }
+  const avgGain = gains / period;
+  const avgLoss = losses / period;
+  if (avgLoss === 0) return 100;
+  return 100 - (100 / (1 + avgGain / avgLoss));
+}
+
+function calcATR(ohlcArr, period = 14) {
+  // Format CoinGecko : [timestamp, open, high, low, close]
+  if (!ohlcArr || ohlcArr.length < period + 1) return null;
+  const slice = ohlcArr.slice(-(period + 1));
+  const trs = [];
+  for (let i = 1; i < slice.length; i++) {
+    const high = slice[i][2];
+    const low = slice[i][3];
+    const prevClose = slice[i - 1][4];
+    trs.push(Math.max(
+      high - low,
+      Math.abs(high - prevClose),
+      Math.abs(low - prevClose)
+    ));
+  }
+  return trs.reduce((s, v) => s + v, 0) / period;
+}
+
+// ── Fetch OHLC CoinGecko ─────────────────────────────
+
+async function fetchOHLC(cgId, days) {
+  const res = await fetch(
+    `https://api.coingecko.com/api/v3/coins/${cgId}/ohlc?vs_currency=usd&days=${days}&t=${Date.now()}`,
+    { cache: 'no-store' }
+  );
+  if (!res.ok) throw new Error(`CoinGecko ${cgId} erreur ${res.status}`);
+  return await res.json();
+}
+
+// ── Analyse d'un token ───────────────────────────────
+
+function analyserDepuisDonnees(token, cgId, daily, h4, btcDaily) {
+  const closes1D = daily.map(c => c[4]);
+  const currentPrice = closes1D[closes1D.length - 1];
+
+  // MAs journalières
+  const mm20  = calcMA(closes1D, 20);
+  const mm50  = calcMA(closes1D, 50);
+  const mm100 = calcMA(closes1D, 100);
+  const mm200 = calcMA(closes1D, 200);
+
+  // Condition 1 — Biais
+  const mmsOrdered = mm20 && mm50 && mm100 && mm200
+    && mm20 > mm50 && mm50 > mm100 && mm100 > mm200;
+  const priceAboveMM50 = mm50 && currentPrice > mm50;
+  const cond1 = (mmsOrdered && priceAboveMM50) ? 1 : 0;
+
+  // Support & cible
+  const mmsArr = [
+    { val: mm20, label: 'MM20' },
+    { val: mm50, label: 'MM50' },
+    { val: mm100, label: 'MM100' },
+    { val: mm200, label: 'MM200' }
+  ].filter(m => m.val);
+
+  const below = mmsArr.filter(m => m.val < currentPrice).sort((a, b) => b.val - a.val);
+  const above = mmsArr.filter(m => m.val > currentPrice).sort((a, b) => a.val - b.val);
+  const supportMM = below[0] || null;
+  const targetMM  = above[0] || null;
+  const risk   = supportMM ? (currentPrice - supportMM.val) / currentPrice * 100 : null;
+  const reward = targetMM  ? (targetMM.val - currentPrice)  / currentPrice * 100 : null;
+  const rr     = risk && reward && risk > 0 ? reward / risk : null;
+
+  // Condition 2 — Momentum BTC
+  let cond2 = 0, btcPerf3D = null, btcAboveMM50 = false;
+  const btcRef = (token === 'BTC') ? daily : btcDaily;
+  if (btcRef && btcRef.length >= 4) {
+    const btcCloses  = btcRef.map(c => c[4]);
+    const btcCurrent = btcCloses[btcCloses.length - 1];
+    const btc3DAgo   = btcCloses[btcCloses.length - 4];
+    const btcMM50    = calcMA(btcCloses, 50);
+    btcPerf3D    = ((btcCurrent - btc3DAgo) / btc3DAgo) * 100;
+    btcAboveMM50 = btcMM50 && btcCurrent > btcMM50;
+    cond2 = (btcAboveMM50 && btcPerf3D >= 1 && btcPerf3D <= 8) ? 1 : 0;
+  }
+
+  // Indicateurs 4H
+  const closes4H = h4.map(c => c[4]);
+  const bb  = calcBollinger(closes4H, 20, 2);
+  const atr = calcATR(h4, 14);
+  const atrPct   = atr ? (atr / currentPrice) * 100 : 0;
+  const bbSqueeze = bb ? bb.bandwidth < 0.04 : false;
+
+  // Condition 3 — Volatilité
+  const cond3 = (bbSqueeze || atrPct > 2) ? 1 : 0;
+
+  // Condition 4 — RSI
+  const rsi  = calcRSI(closes4H, 14);
+  const cond4 = rsi && rsi >= 35 && rsi <= 65 ? 1 : 0;
+
+  // Condition 5 — Confluence manuelle
+  const cond5 = 0;
+
+  const score = cond1 + cond2 + cond3 + cond4 + cond5;
+  const biais = (mmsOrdered && priceAboveMM50) ? 'long'
+    : (mm200 && currentPrice < mm200) ? 'short' : 'neutre';
+
+  return {
+    token, cgId, currentPrice,
+    mm20, mm50, mm100, mm200,
+    mmsOrdered, priceAboveMM50, biais,
+    supportMM, targetMM, risk, reward, rr,
+    btcPerf3D, btcAboveMM50,
+    bb, atr, atrPct, bbSqueeze, rsi,
+    cond1, cond2, cond3, cond4, cond5, score
+  };
+}
+
+// ── Helpers d'affichage ──────────────────────────────
+
+function signalLabel(score) {
+  if (score >= 4) return { label: '⚡ Setup fort',    color: '#68d391' };
+  if (score === 3) return { label: '👀 À surveiller', color: '#f6ad55' };
+  if (score === 2) return { label: '⏳ Attendre',     color: '#a0aec0' };
+  return             { label: '🚫 Éviter',          color: '#fc8181' };
+}
+
+function renderDots(score, max = 5) {
+  let h = '';
+  for (let i = 0; i < max; i++)
+    h += `<span class="score-dot ${i < score ? 'score-dot-on' : 'score-dot-off'}"></span>`;
+  return h;
+}
+
+function pct(v) {
+  if (v == null) return '—';
+  return `${v >= 0 ? '+' : ''}${v.toFixed(2)} %`;
+}
+
+function fmt(v, dec = 2) {
+  if (v == null) return '—';
+  return v.toLocaleString('fr-FR', { maximumFractionDigits: dec });
+}
+
+function chk(c) { return c ? '✅' : '❌'; }
+
+// ── Render scanner ────────────────────────────────────
+
+function genererSynthese(r) {
+  const parties = [];
+  if (r.cond1) parties.push(`biais long confirmé (MMs ordonnées)`);
+  else parties.push('biais non confirmé — MMs non ordonnées ou prix sous MM50');
+  if (r.cond2) parties.push(`momentum BTC solide (${pct(r.btcPerf3D)} sur 3J)`);
+  else parties.push('momentum BTC insuffisant');
+  if (r.bbSqueeze) parties.push('compression Bollinger détectée');
+  else if (r.cond3) parties.push(`volatilité ATR suffisante (${r.atrPct.toFixed(1)} %)`);
+  else parties.push('pas de compression ni de volatilité suffisante');
+  if (r.cond4) parties.push(`RSI neutre (${r.rsi?.toFixed(0)})`);
+  else parties.push(`RSI à ${r.rsi?.toFixed(0)} — ${r.rsi > 65 ? 'suracheté, attendre' : 'survendu, surveiller'}`);
+  if (r.rr && r.rr >= 1.5) parties.push(`R/R de ${r.rr.toFixed(2)}`);
+  return parties.join(', ') + '.';
+}
+
+function renderDetail(r) {
+  return `
+    <div class="detail-grid">
+      <div class="detail-section">
+        <div class="detail-titre">📊 Cond. 1 — Biais 1J ${chk(r.cond1)}</div>
+        <div class="detail-ligne"><span>Ordre MMs</span><span>${chk(r.mmsOrdered)}</span></div>
+        <div class="detail-ligne"><span>Prix > MM50</span><span>${chk(r.priceAboveMM50)}</span></div>
+        <div class="detail-ligne"><span>MM20</span><span>${fmt(r.mm20)} $</span></div>
+        <div class="detail-ligne"><span>MM50</span><span>${fmt(r.mm50)} $</span></div>
+        <div class="detail-ligne"><span>MM100</span><span>${fmt(r.mm100)} $</span></div>
+        <div class="detail-ligne"><span>MM200</span><span>${fmt(r.mm200)} $</span></div>
+        ${r.supportMM ? `<div class="detail-ligne"><span>Support (${r.supportMM.label})</span><span>${fmt(r.supportMM.val)} $ (${pct(-r.risk)})</span></div>` : ''}
+        ${r.targetMM  ? `<div class="detail-ligne"><span>Cible (${r.targetMM.label})</span><span>${fmt(r.targetMM.val)} $ (+${r.reward?.toFixed(2)} %)</span></div>` : ''}
+        ${r.rr ? `<div class="detail-ligne detail-rr"><span>R/R estimé</span><span class="${r.rr >= 1.5 ? 'pos' : 'neg'}">${r.rr.toFixed(2)}</span></div>` : ''}
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-titre">₿ Cond. 2 — Momentum BTC ${chk(r.cond2)}</div>
+        <div class="detail-ligne"><span>BTC > MM50 1J</span><span>${chk(r.btcAboveMM50)}</span></div>
+        <div class="detail-ligne"><span>Perf BTC 3J</span>
+          <span class="${r.btcPerf3D >= 1 && r.btcPerf3D <= 8 ? 'pos' : 'neg'}">${pct(r.btcPerf3D)}</span>
+        </div>
+        <div class="detail-ligne"><span>Zone cible (1 % – 8 %)</span>
+          <span>${chk(r.btcPerf3D >= 1 && r.btcPerf3D <= 8)}</span>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-titre">🎯 Cond. 3 — Volatilité 4H ${chk(r.cond3)}</div>
+        ${r.bb ? `
+        <div class="detail-ligne"><span>Bandwidth BB</span><span>${(r.bb.bandwidth * 100).toFixed(2)} %</span></div>
+        <div class="detail-ligne"><span>Squeeze BB (< 4 %)</span><span>${chk(r.bbSqueeze)}</span></div>
+        <div class="detail-ligne"><span>BB haute</span><span>${fmt(r.bb.upper)} $</span></div>
+        <div class="detail-ligne"><span>BB basse</span><span>${fmt(r.bb.lower)} $</span></div>
+        ` : ''}
+        <div class="detail-ligne"><span>ATR 4H</span><span>${fmt(r.atr)} $ (${r.atrPct.toFixed(2)} %)</span></div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-titre">📈 Cond. 4 — RSI 4H ${chk(r.cond4)}</div>
+        <div class="detail-ligne"><span>RSI (14)</span>
+          <span class="${r.rsi >= 35 && r.rsi <= 65 ? 'pos' : 'neg'}">${r.rsi ? r.rsi.toFixed(1) : '—'}</span>
+        </div>
+        <div class="detail-ligne"><span>Zone neutre (35 – 65)</span><span>${chk(r.rsi >= 35 && r.rsi <= 65)}</span></div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-titre">🔗 Cond. 5 — Confluence manuelle ${chk(r.cond5)}</div>
+        <div class="detail-ligne"><span>FVG / Niveau horizontal</span><span>Valider sur TradingView</span></div>
+        <button class="btn-cond5 ${r.cond5 ? 'btn-cond5-on' : ''}"
+          onclick="toggleCond5('${r.token}')">
+          ${r.cond5 ? '✅ Confluence confirmée' : '☐ Marquer comme confirmée'}
+        </button>
+      </div>
+    </div>
+
+    <div class="detail-synthese">
+      💡 <strong>Synthèse :</strong> ${genererSynthese(r)}
+    </div>
+  `;
+}
+
+function renderScanner(results) {
+  const container = document.getElementById('scanner-table');
+  const status    = document.getElementById('scanner-status');
+  if (!container) return;
+
+  const now = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  if (status) status.textContent = `Mis à jour à ${now}`;
+
+  results.sort((a, b) => b.score - a.score);
+  container.innerHTML = '';
+
+  results.forEach(r => {
+    const sig      = signalLabel(r.score);
+    const biaisIcon = r.biais === 'long' ? '🟢' : r.biais === 'short' ? '🔴' : '🟡';
+    const biaisText = r.biais.charAt(0).toUpperCase() + r.biais.slice(1);
+
+    const row = document.createElement('div');
+    row.className = 'scanner-row';
+    row.innerHTML = `
+      <div class="scanner-row-main" onclick="toggleScannerDetail('${r.token}')">
+        <div class="scanner-token">
+          <strong>${r.token}</strong>
+          <small>${r.currentPrice ? r.currentPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }) : '—'}</small>
+        </div>
+        <div class="scanner-score">
+          ${renderDots(r.score)}
+          <span class="score-num">${r.score}/5</span>
+        </div>
+        <div class="scanner-biais">${biaisIcon} ${biaisText}</div>
+        <div class="scanner-signal" style="color:${sig.color}">${sig.label}</div>
+        <div class="scanner-chevron">▼</div>
+      </div>
+      <div class="scanner-detail hidden" id="detail-${r.token}">
+        ${renderDetail(r)}
+      </div>
+    `;
+    container.appendChild(row);
+  });
+
+  // Mini scanner dashboard
+  renderDashMiniScanner(results.filter(r => r.token === 'BTC' || r.token === 'ETH'));
+}
+
+function renderDashMiniScanner(results) {
+  const el = document.getElementById('dash-scanner');
+  if (!el) return;
+  el.innerHTML = results.length
+    ? results.map(r => {
+        const sig = signalLabel(r.score);
+        return `
+          <div class="dash-scanner-token">
+            <strong>${r.token}</strong>
+            <div>${renderDots(r.score)}</div>
+            <span style="color:${sig.color};font-size:0.78rem">${sig.label}</span>
+          </div>`;
+      }).join('')
+    : '<span style="color:#4a5568;font-size:0.85rem">Scanner non chargé — voir onglet Scanner</span>';
+}
+
+function toggleScannerDetail(token) {
+  document.getElementById(`detail-${token}`)?.classList.toggle('hidden');
+}
+
+function toggleCond5(token) {
+  const r = scannerResults.find(x => x.token === token);
+  if (!r) return;
+  r.cond5  = r.cond5 ? 0 : 1;
+  r.score  = r.cond1 + r.cond2 + r.cond3 + r.cond4 + r.cond5;
+  renderScanner(scannerResults);
+  document.getElementById(`detail-${token}`)?.classList.remove('hidden');
+}
+
+// ── Chargement principal ──────────────────────────────
+
+async function chargerScanner() {
+  const status = document.getElementById('scanner-status');
+  const btn    = document.getElementById('btn-scanner-refresh');
+  if (status) status.textContent = '⏳ Analyse en cours...';
+  if (btn) btn.disabled = true;
+
+  try {
+    // Récupérer la liste des tokens depuis Supabase
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/scanner_tokens?actif=eq.true&order=token.asc&select=*`,
+      { headers: headers() }
+    );
+    const tokens = await res.json();
+    if (!Array.isArray(tokens) || !tokens.length) return;
+
+    // Fetcher BTC daily en premier (partagé)
+    const btcToken = tokens.find(t => t.token === 'BTC');
+    let btcDaily = null;
+    if (btcToken) {
+      btcDaily = await fetchOHLC('bitcoin', 365);
+      await new Promise(r => setTimeout(r, 700));
+    }
+
+    const results = [];
+    for (const t of tokens) {
+      try {
+        const daily = (t.token === 'BTC' && btcDaily) ? btcDaily
+          : await fetchOHLC(t.coingecko_id, 365);
+        if (t.token !== 'BTC') await new Promise(r => setTimeout(r, 700));
+
+        const h4 = await fetchOHLC(t.coingecko_id, 30);
+        await new Promise(r => setTimeout(r, 700));
+
+        const result = analyserDepuisDonnees(t.token, t.coingecko_id, daily, h4, btcDaily);
+        results.push(result);
+      } catch(e) {
+        console.error(`Erreur ${t.token}:`, e);
+      }
+    }
+
+    scannerResults = results;
+    renderScanner(results);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
