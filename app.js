@@ -548,14 +548,23 @@ totalValeur += valeurCompte;
         </div>
       </div>
 
-      <div class="simulateur">
+<div class="simulateur">
         <h4>🔮 Simulateur de scénario</h4>
-        <div class="sim-row">
+
+        <div class="sim-row" style="margin-bottom:0.75rem">
           <span>Si ${bot.token} atteint</span>
-          <input type="number" id="sim-input-${bot.id}" placeholder="Prix en $" step="any"
-            oninput="simulerBot('${bot.id}', ${bot.capital_investi}, ${bot.grid_profit}, ${gainNet}, ${prixLive || 0}, ${bot.pente_simulateur || 0})"
+          <input type="number" id="sim-prix-${bot.id}" placeholder="Prix en $" step="any"
+            oninput="simulerBot('${bot.id}', ${bot.capital_investi}, ${bot.grid_profit}, ${gainNet}, ${prixLive || 0}, ${bot.pente_simulateur || 0}, ${bot.pente_liquidation || 0}, ${bot.prix_liquidation})">
           <span>$</span>
         </div>
+
+        <div class="sim-row">
+          <span>Si j'injecte</span>
+          <input type="number" id="sim-injection-${bot.id}" placeholder="Montant en $" step="any"
+            oninput="simulerBot('${bot.id}', ${bot.capital_investi}, ${bot.grid_profit}, ${gainNet}, ${prixLive || 0}, ${bot.pente_simulateur || 0}, ${bot.pente_liquidation || 0}, ${bot.prix_liquidation})">
+          <span>$ <small style="color:#4a5568">(négatif = retrait)</small></span>
+        </div>
+
         <div class="sim-result" id="sim-result-${bot.id}"></div>
       </div>
     `;
@@ -576,21 +585,71 @@ totalValeur += valeurCompte;
 }
 
 // Simulateur
-function simulerBot(botId, capitalInvesti, gridProfit, pnlActuel, prixLive, pente) {
-  const input = document.getElementById(`sim-input-${botId}`);
+function simulerBot(botId, capitalInvesti, gridProfit, gainNetActuel, prixLive, penteSimu, penteLiq, prixLiqActuel) {
+  const inputPrix = document.getElementById(`sim-prix-${botId}`);
+  const inputInjection = document.getElementById(`sim-injection-${botId}`);
   const result = document.getElementById(`sim-result-${botId}`);
-  const prixCible = parseFloat(input.value);
-  if (!prixCible || isNaN(prixCible) || !prixLive) { result.textContent = ''; return; }
 
-  const deltaPrix = prixCible - prixLive;
-  const gainNetSim = pnlActuel + (deltaPrix * pente);
-  const pct = ((gainNetSim / capitalInvesti) * 100).toFixed(2);
-  const signe = gainNetSim >= 0 ? '+' : '';
+  const prixCible = parseFloat(inputPrix.value);
+  const injection = parseFloat(inputInjection.value) || 0;
 
-  result.innerHTML = `
-    Gain net estimé : <strong class="${gainNetSim >= 0 ? 'pos' : 'neg'}">${signe}${gainNetSim.toLocaleString('fr-FR', { style:'currency', currency:'USD' })} (${signe}${pct} % sur capital investi)</strong>
-    <br><small style="color:#4a5568">Breakeven estimé : ${Math.round(prixLive - (pnlActuel / pente)).toLocaleString()} $</small>
-  `;
+  // Rien à afficher si les deux champs sont vides
+  if (!prixCible && !injection) { result.textContent = ''; return; }
+
+  let html = '';
+
+  // ── Simulation prix ──────────────────────────────
+  if (prixCible && prixLive && penteSimu) {
+    const deltaPrix = prixCible - prixLive;
+    const gainNetSim = gainNetActuel + (deltaPrix * penteSimu);
+    const pct = ((gainNetSim / capitalInvesti) * 100).toFixed(2);
+    const signe = gainNetSim >= 0 ? '+' : '';
+
+    html += `
+      <div style="margin-bottom:0.5rem">
+        📈 Gain net si ${prixCible.toLocaleString()} $ :
+        <strong class="${gainNetSim >= 0 ? 'pos' : 'neg'}">
+          ${signe}${gainNetSim.toLocaleString('fr-FR', { style:'currency', currency:'USD' })}
+          (${signe}${pct} %)
+        </strong>
+      </div>
+    `;
+  }
+
+  // ── Simulation injection ─────────────────────────
+  if (injection !== 0 && penteLiq) {
+    const nouvLiq = prixLiqActuel - (injection * penteLiq);
+    const margeSec = prixLive ? ((prixLive - nouvLiq) / prixLive * 100).toFixed(1) : null;
+    const liqColor = nouvLiq < 0 ? 'pos' : nouvLiq < (prixLive * 0.3) ? 'pos' : 'neg';
+
+    html += `
+      <div style="margin-bottom:0.5rem">
+        💉 ${injection > 0 ? 'Après injection de' : 'Après retrait de'} ${Math.abs(injection).toLocaleString()} $ :
+        <strong>Nouveau prix de liquidation ≈
+          <span class="${nouvLiq <= 0 ? 'pos' : nouvLiq < (prixLive * 0.2) ? 'neg' : ''}">${nouvLiq <= 0 ? '🟢 liquidation impossible' : nouvLiq.toLocaleString('fr-FR', { style:'currency', currency:'USD' })}</span>
+        </strong>
+        ${margeSec && nouvLiq > 0 ? `<span style="color:#718096;font-size:0.8rem"> — marge de sécurité ${margeSec} %</span>` : ''}
+      </div>
+    `;
+  }
+
+  // ── Combiné : prix + injection ───────────────────
+  if (prixCible && injection !== 0 && penteSimu && penteLiq) {
+    const deltaPrix = prixCible - prixLive;
+    const gainNetSim = gainNetActuel + (deltaPrix * penteSimu);
+    const pct = ((gainNetSim / capitalInvesti) * 100).toFixed(2);
+    const signe = gainNetSim >= 0 ? '+' : '';
+    const nouvLiq = prixLiqActuel - (injection * penteLiq);
+
+    html += `
+      <div style="border-top:1px solid #2d3748;padding-top:0.5rem;margin-top:0.25rem;color:#a0aec0;font-size:0.82rem">
+        Combiné : gain net <strong class="${gainNetSim >= 0 ? 'pos' : 'neg'}">${signe}${gainNetSim.toLocaleString('fr-FR', { style:'currency', currency:'USD' })}</strong>
+        + liq à <strong>${nouvLiq <= 0 ? '🟢 impossible' : nouvLiq.toLocaleString('fr-FR', { style:'currency', currency:'USD' })}</strong>
+      </div>
+    `;
+  }
+
+  result.innerHTML = html || '';
 }
 // Édition grid profit
 async function editGrid(botId, valeurActuelle) {
