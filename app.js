@@ -893,17 +893,20 @@ async function ajouterTradePerp() {
   const date_cloture = document.getElementById('perp-date-clo').value;
   const paire = document.getElementById('perp-paire').value.trim().toUpperCase();
   const sens = document.getElementById('perp-sens').value;
-  const montant_entree = parseFloat(document.getElementById('perp-entree').value);
+const quantite = parseFloat(document.getElementById('perp-quantite').value);
+  const prix_entree = parseFloat(document.getElementById('perp-prix-entree').value);
   const frais_entree = parseFloat(document.getElementById('perp-frais-entree').value) || 0;
-  const montant_sortie = parseFloat(document.getElementById('perp-sortie').value);
+  const prix_sortie = parseFloat(document.getElementById('perp-prix-sortie').value);
   const frais_sortie = parseFloat(document.getElementById('perp-frais-sortie').value) || 0;
 
-  if (!date_ouverture || !paire || !montant_entree || isNaN(montant_entree)) {
-    alert('Date ouverture, paire et montant entrée requis.');
+  if (!date_ouverture || !paire || !quantite || !prix_entree || isNaN(quantite) || isNaN(prix_entree)) {
+    alert('Date ouverture, paire, quantité et prix entrée requis.');
     return;
   }
 
-  // Calcul automatique PnL
+  // Calcul automatique des montants et PnL
+  const montant_entree = quantite * prix_entree;
+  const montant_sortie = prix_sortie ? quantite * prix_sortie : null;
   const pnl_usd = montant_sortie
     ? montant_sortie - montant_entree - frais_entree - frais_sortie
     : null;
@@ -927,8 +930,8 @@ async function ajouterTradePerp() {
   });
 
   // Reset form
-  ['perp-date-ouv','perp-date-clo','perp-paire','perp-entree',
-   'perp-frais-entree','perp-sortie','perp-frais-sortie'].forEach(id => {
+['perp-date-ouv','perp-date-clo','perp-paire','perp-quantite',
+   'perp-prix-entree','perp-frais-entree','perp-prix-sortie','perp-frais-sortie'].forEach(id => {
     document.getElementById(id).value = '';
   });
 
