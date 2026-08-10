@@ -23,6 +23,7 @@ async function login() {
     body: JSON.stringify({ email, password })
   });
   const data = await res.json();
+  console.log('login response:', data);
 
   if (data.access_token) {
     currentSession = data.access_token;
