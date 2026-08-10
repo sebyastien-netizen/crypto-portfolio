@@ -154,7 +154,6 @@ function formatMois(str) {
 }
 
 // ─── INIT ────────────────────────────────────────────
-
 document.getElementById('btn-login').addEventListener('click', login);
 document.getElementById('btn-logout').addEventListener('click', logout);
 document.getElementById('btn-add-spot').addEventListener('click', ajouterSpot);
@@ -166,6 +165,14 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     if (btn.dataset.tab === 'positions') chargerStaking();
   });
 });
+
+// Rafraîchissement automatique des bots toutes les 60 secondes
+setInterval(() => {
+  const tabBots = document.getElementById('tab-bots');
+  if (tabBots && !tabBots.classList.contains('hidden')) {
+    chargerBots();
+  }
+}, 60000);
 
 // Restaurer la session au chargement
 const savedToken = localStorage.getItem('cp_token');
