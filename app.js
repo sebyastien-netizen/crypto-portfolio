@@ -145,6 +145,7 @@ function formatMois(str) {
 
 document.getElementById('btn-login').addEventListener('click', login);
 document.getElementById('btn-logout').addEventListener('click', logout);
+document.getElementById('btn-add-spot').addEventListener('click', ajouterSpot);
 document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     switchTab(btn.dataset.tab);
@@ -254,13 +255,33 @@ async function renderSpot(positions) {
     totalGlobal.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' });
 }
 
+// Dictionnaire tokens courants → ID CoinGecko
+const COINGECKO_IDS = {
+  'BTC': 'bitcoin', 'ETH': 'ethereum', 'SOL': 'solana',
+  'BNB': 'binancecoin', 'XRP': 'ripple', 'ADA': 'cardano',
+  'AVAX': 'avalanche-2', 'DOT': 'polkadot', 'MATIC': 'matic-network',
+  'LINK': 'chainlink', 'UNI': 'uniswap', 'AAVE': 'aave',
+  'HYPE': 'hyperliquid', 'LTC': 'litecoin', 'ATOM': 'cosmos',
+  'NEAR': 'near', 'OP': 'optimism', 'ARB': 'arbitrum',
+  'PEPE': 'pepe', 'WIF': 'dogwifcoin', 'BONK': 'bonk',
+  'USDT': 'tether', 'USDC': 'usd-coin', 'DAI': 'dai'
+};
+
 async function ajouterSpot() {
   const wallet_id = document.getElementById('spot-wallet').value;
   const token = document.getElementById('spot-token').value.trim().toUpperCase();
-  const coingecko_id = document.getElementById('spot-coingecko').value.trim().toLowerCase();
   const quantite = parseFloat(document.getElementById('spot-quantite').value);
 
-  if (!token || !quantite || isNaN(quantite)) return;
+  if (!token || !quantite || isNaN(quantite)) {
+    alert('Token et quantité requis.');
+    return;
+  }
+
+  // ID CoinGecko auto depuis le dictionnaire, sinon champ manuel
+  let coingecko_id = document.getElementById('spot-coingecko').value.trim().toLowerCase();
+  if (!coingecko_id && COINGECKO_IDS[token]) {
+    coingecko_id = COINGECKO_IDS[token];
+  }
 
   const id = 'spot-' + Date.now();
   const body = {
@@ -278,7 +299,6 @@ async function ajouterSpot() {
     body: JSON.stringify(body)
   });
 
-  // Reset form
   document.getElementById('spot-token').value = '';
   document.getElementById('spot-coingecko').value = '';
   document.getElementById('spot-quantite').value = '';
