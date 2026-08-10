@@ -163,12 +163,16 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     switchTab(btn.dataset.tab);
     if (btn.dataset.tab === 'dashboard') chargerDashboard();
+    if (btn.dataset.tab === 'scanner') chargerScanner();
     if (btn.dataset.tab === 'spot') chargerSpot();
     if (btn.dataset.tab === 'bots') chargerBots();
     if (btn.dataset.tab === 'pools') chargerPools();
     if (btn.dataset.tab === 'positions') chargerStaking();
   });
 });
+
+document.getElementById('btn-scanner-refresh')
+  .addEventListener('click', chargerScanner);
 
 // Rafraîchissement automatique des bots toutes les 60 secondes
 setInterval(() => {
