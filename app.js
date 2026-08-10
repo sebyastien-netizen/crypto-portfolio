@@ -160,8 +160,10 @@ document.getElementById('btn-add-spot').addEventListener('click', ajouterSpot);
 document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     switchTab(btn.dataset.tab);
+    if (btn.dataset.tab === 'dashboard') chargerDashboard();
     if (btn.dataset.tab === 'spot') chargerSpot();
     if (btn.dataset.tab === 'bots') chargerBots();
+    if (btn.dataset.tab === 'pools') chargerPools();
     if (btn.dataset.tab === 'positions') chargerStaking();
   });
 });
@@ -180,6 +182,7 @@ if (savedToken) {
   currentSession = savedToken;
   document.getElementById('screen-login').classList.add('hidden');
   document.getElementById('screen-app').classList.remove('hidden');
+  chargerDashboard();
   chargerTrades();
 }
 // ─── SPOT PORTFOLIO ──────────────────────────────────
@@ -696,4 +699,148 @@ async function editPnl(botId, valeurActuelle) {
     body: JSON.stringify({ pnl_tendance: val })
   });
   chargerBots();
+}
+// ─── POOLS LP ────────────────────────────────────────
+
+async function chargerPools() {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/pools_lp?order=nom.asc&select=*`,
+    { headers: headers() }
+  );
+  const pools = await res.json();
+  if (!Array.isArray(pools)) return;
+  renderPools(pools);
+}
+
+function renderPools(pools) {
+  const total = pools.reduce((s, p) => s + (p.valeur_usd || 0), 0);
+  document.getElementById('pools-total').textContent =
+    total.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' });
+
+  const container = document.getElementById('pools-liste');
+  container.innerHTML = '';
+
+  pools.forEach(pool => {
+    const card = document.createElement('div');
+    card.className = 'pool-card';
+    card.innerHTML = `
+      <div class="pool-info">
+        <span class="pool-nom">${pool.nom}</span>
+        <span class="pool-protocole">${pool.protocole} · ${pool.wallet_id}</span>
+      </div>
+      <div class="pool-valeur">
+        <strong id="pool-val-${pool.id}">${pool.valeur_usd.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' })}</strong>
+        <button class="btn-edit-pool" onclick="editPool('${pool.id}', ${pool.valeur_usd})">✏️ Mettre à jour</button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+async function editPool(poolId, valeurActuelle) {
+  const nouvelleValeur = prompt('Nouvelle valeur en $ :', valeurActuelle);
+  if (nouvelleValeur === null) return;
+  const val = parseFloat(nouvelleValeur);
+  if (isNaN(val)) return;
+
+  await fetch(`${SUPABASE_URL}/rest/v1/pools_lp?id=eq.${poolId}`, {
+    method: 'PATCH',
+    headers: { ...headers(), 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ valeur_usd: val, updated_at: new Date().toISOString() })
+  });
+  chargerPools();
+}
+
+// ─── DASHBOARD ───────────────────────────────────────
+
+async function chargerDashboard() {
+  // Charger toutes les sources en parallèle
+  const [resSpot, resStaking, resBots, resPools, resTrades] = await Promise.all([
+    fetch(`${SUPABASE_URL}/rest/v1/spot_positions?select=*`, { headers: headers() }),
+    fetch(`${SUPABASE_URL}/rest/v1/positions_passives?statut=eq.actif&select=*`, { headers: headers() }),
+    fetch(`${SUPABASE_URL}/rest/v1/bots_pionex?select=*`, { headers: headers() }),
+    fetch(`${SUPABASE_URL}/rest/v1/pools_lp?select=*`, { headers: headers() }),
+    fetch(`${SUPABASE_URL}/rest/v1/trades_perp?statut=eq.ferme&select=pnl_usd`, { headers: headers() })
+  ]);
+
+  const [spot, staking, bots, pools, trades] = await Promise.all([
+    resSpot.json(), resStaking.json(), resBots.json(),
+    resPools.json(), resTrades.json()
+  ]);
+
+  if (!Array.isArray(spot) || !Array.isArray(bots)) return;
+
+  // Prix CoinGecko pour spot + staking
+  const tokensSpot = spot.map(p => p.coingecko_id).filter(Boolean);
+  const tokensStaking = staking.map(p => COINGECKO_IDS[p.token]).filter(Boolean);
+  const ids = [...new Set([...tokensSpot, ...tokensStaking])];
+  let prix = {};
+  if (ids.length) {
+    try {
+      const cgRes = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd`
+      );
+      prix = await cgRes.json();
+    } catch (e) { console.error('CoinGecko indisponible', e); }
+  }
+
+  // ── Calcul par poche ──────────────────────────────
+
+  // Spot
+  const valeurSpot = spot.reduce((s, p) => {
+    const px = prix[p.coingecko_id]?.usd || 0;
+    return s + px * p.quantite;
+  }, 0);
+
+  // Staking hors spot (HYPE uniquement)
+  const stakingHorsSpot = staking.filter(p => {
+    const walletSpot = spot.find(s => s.token === p.token && s.wallet_id === p.wallet_id);
+    return !walletSpot;
+  });
+  const valeurStaking = stakingHorsSpot.reduce((s, p) => {
+    const cgId = COINGECKO_IDS[p.token];
+    const px = cgId ? prix[cgId]?.usd || 0 : 0;
+    return s + px * p.montant_depose;
+  }, 0);
+
+  // Bots Pionex
+  const valeurBots = bots.reduce((s, b) => {
+    return s + b.capital_investi + b.marge_supplementaire + b.grid_profit + b.pnl_tendance;
+  }, 0);
+
+  // Pools LP
+  const valeurPools = Array.isArray(pools)
+    ? pools.reduce((s, p) => s + (p.valeur_usd || 0), 0)
+    : 0;
+
+  // PnL PERP
+  const pnlPerp = Array.isArray(trades)
+    ? trades.reduce((s, t) => s + (t.pnl_usd || 0), 0)
+    : 0;
+
+  // ── Total ─────────────────────────────────────────
+  const total = valeurSpot + valeurStaking + valeurBots + valeurPools + pnlPerp;
+
+  // ── Render ────────────────────────────────────────
+  document.getElementById('dash-total').textContent =
+    total.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' });
+
+  const lignes = [
+    { label: 'Portfolio Spot', detail: 'Kraken · Rabby · Pionex', valeur: valeurSpot },
+    { label: 'HYPE Staké', detail: 'Hyperliquid', valeur: valeurStaking },
+    { label: 'Bots Pionex', detail: 'ETH 3x · BTC 5x (valeur compte)', valeur: valeurBots },
+    { label: 'Pools LP', detail: 'PRJX (valeur manuelle)', valeur: valeurPools },
+    { label: 'PnL Trades PERP', detail: 'Kraken 2026 — gains réalisés', valeur: pnlPerp },
+  ];
+
+  const container = document.getElementById('dash-details');
+  container.innerHTML = lignes.map(l => `
+    <div class="dash-ligne">
+      <div class="dash-ligne-label">
+        <span>${l.label}</span>
+        <small>${l.detail}</small>
+      </div>
+      <span class="dash-ligne-valeur ${l.valeur < 0 ? 'neg' : ''}">${l.valeur.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' })}</span>
+    </div>
+  `).join('');
 }
