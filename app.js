@@ -157,6 +157,8 @@ function formatMois(str) {
 document.getElementById('btn-login').addEventListener('click', login);
 document.getElementById('btn-logout').addEventListener('click', logout);
 document.getElementById('btn-add-spot').addEventListener('click', ajouterSpot);
+document.getElementById('btn-add-tx').addEventListener('click', ajouterTransaction);
+document.getElementById('btn-add-perp').addEventListener('click', ajouterTradePerp);
 document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     switchTab(btn.dataset.tab);
@@ -843,4 +845,92 @@ async function chargerDashboard() {
       <span class="dash-ligne-valeur ${l.valeur < 0 ? 'neg' : ''}">${l.valeur.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' })}</span>
     </div>
   `).join('');
+}
+// ─── TRANSACTION SPOT ────────────────────────────────
+
+async function ajouterTransaction() {
+  const wallet_id = document.getElementById('tx-wallet').value;
+  const date = document.getElementById('tx-date').value;
+  const sens = document.getElementById('tx-sens').value;
+  const token = document.getElementById('tx-token').value.trim().toUpperCase();
+  const quantite = parseFloat(document.getElementById('tx-quantite').value);
+  const prix = parseFloat(document.getElementById('tx-prix').value);
+  const frais = parseFloat(document.getElementById('tx-frais').value) || 0;
+
+  if (!date || !token || !quantite || !prix || isNaN(quantite) || isNaN(prix)) {
+    alert('Date, token, quantité et prix requis.');
+    return;
+  }
+
+  const coingecko_id = COINGECKO_IDS[token] || null;
+  const id = 'tx-' + Date.now();
+
+  await fetch(`${SUPABASE_URL}/rest/v1/transactions_spot`, {
+    method: 'POST',
+    headers: { ...headers(), 'Prefer': 'return=minimal' },
+    body: JSON.stringify({
+      id, user_id: 'a494d43c-a915-4f34-875c-2b0ebd84d5fb',
+      wallet_id, date_transaction: date, token, coingecko_id,
+      sens, quantite, prix_unitaire_usd: prix, frais_usd: frais
+    })
+  });
+
+  // Reset form
+  document.getElementById('tx-date').value = '';
+  document.getElementById('tx-token').value = '';
+  document.getElementById('tx-quantite').value = '';
+  document.getElementById('tx-prix').value = '';
+  document.getElementById('tx-frais').value = '';
+
+  alert(`Transaction ${sens} ${token} enregistrée ✅`);
+}
+
+// ─── TRADE PERP ──────────────────────────────────────
+
+async function ajouterTradePerp() {
+  const wallet_id = document.getElementById('perp-wallet').value;
+  const date_ouverture = document.getElementById('perp-date-ouv').value;
+  const date_cloture = document.getElementById('perp-date-clo').value;
+  const paire = document.getElementById('perp-paire').value.trim().toUpperCase();
+  const sens = document.getElementById('perp-sens').value;
+  const montant_entree = parseFloat(document.getElementById('perp-entree').value);
+  const frais_entree = parseFloat(document.getElementById('perp-frais-entree').value) || 0;
+  const montant_sortie = parseFloat(document.getElementById('perp-sortie').value);
+  const frais_sortie = parseFloat(document.getElementById('perp-frais-sortie').value) || 0;
+
+  if (!date_ouverture || !paire || !montant_entree || isNaN(montant_entree)) {
+    alert('Date ouverture, paire et montant entrée requis.');
+    return;
+  }
+
+  // Calcul automatique PnL
+  const pnl_usd = montant_sortie
+    ? montant_sortie - montant_entree - frais_entree - frais_sortie
+    : null;
+  const pnl_pct = pnl_usd && montant_entree
+    ? (pnl_usd / montant_entree) * 100
+    : null;
+
+  const id = 'perp-' + Date.now();
+
+  await fetch(`${SUPABASE_URL}/rest/v1/trades_perp`, {
+    method: 'POST',
+    headers: { ...headers(), 'Prefer': 'return=minimal' },
+    body: JSON.stringify({
+      id, user_id: 'a494d43c-a915-4f34-875c-2b0ebd84d5fb',
+      wallet_id, date_ouverture, date_cloture: date_cloture || null,
+      paire, sens, montant_entree, frais_entree,
+      montant_sortie: montant_sortie || null, frais_sortie,
+      pnl_usd, pnl_pct,
+      statut: date_cloture ? 'ferme' : 'ouvert'
+    })
+  });
+
+  // Reset form
+  ['perp-date-ouv','perp-date-clo','perp-paire','perp-entree',
+   'perp-frais-entree','perp-sortie','perp-frais-sortie'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+
+  chargerTrades();
 }
