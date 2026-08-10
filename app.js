@@ -219,8 +219,8 @@ async function renderSpot(positions) {
   let prix = {};
   if (ids.length) {
     try {
-      const cgRes = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd`
+const cgRes = await fetch(
+        `/api/coingecko?endpoint=${encodeURIComponent(`simple/price?ids=${ids.join(',')}&vs_currencies=usd`)}`
       );
       prix = await cgRes.json();
     } catch (e) {
@@ -381,8 +381,8 @@ async function renderStaking(positions) {
   let prix = {};
   if (ids.length) {
     try {
-      const cgRes = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd`
+const cgRes = await fetch(
+        `/api/coingecko?endpoint=${encodeURIComponent(`simple/price?ids=${ids.join(',')}&vs_currencies=usd`)}`
       );
       prix = await cgRes.json();
     } catch (e) {
@@ -471,8 +471,7 @@ async function renderBots(bots) {
   if (ids.length) {
     try {
 const cgRes = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd&t=${Date.now()}`,
-        { cache: 'no-store' }
+        `/api/coingecko?endpoint=${encodeURIComponent(`simple/price?ids=${ids.join(',')}&vs_currencies=usd`)}`
       );
       prix = await cgRes.json();
       console.log('Prix CoinGecko:', prix, 'à', new Date().toLocaleTimeString());
@@ -790,9 +789,8 @@ const ids = [...new Set([...tokensSpot, ...tokensStaking])];
 let prix = {};
 if (ids.length) {
   try {
-    const cgRes = await fetch(
-      `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd&t=${Date.now()}`,
-      { cache: 'no-store' }
+const cgRes = await fetch(
+      `/api/coingecko?endpoint=${encodeURIComponent(`simple/price?ids=${ids.join(',')}&vs_currencies=usd`)}`
     );
     prix = await cgRes.json();
     console.log('Prix dashboard:', prix);
@@ -1011,10 +1009,8 @@ function calcATR(ohlcArr, period = 14) {
 // ── Fetch OHLC CoinGecko ─────────────────────────────
 
 async function fetchOHLC(cgId, days) {
-  const res = await fetch(
-    `https://api.coingecko.com/api/v3/coins/${cgId}/ohlc?vs_currency=usd&days=${days}&t=${Date.now()}`,
-    { cache: 'no-store' }
-  );
+  const endpoint = `coins/${cgId}/ohlc?vs_currency=usd&days=${days}`;
+  const res = await fetch(`/api/coingecko?endpoint=${encodeURIComponent(endpoint)}`);
   if (!res.ok) throw new Error(`CoinGecko ${cgId} erreur ${res.status}`);
   return await res.json();
 }
