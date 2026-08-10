@@ -416,3 +416,30 @@ nav {
   color: #a0aec0;
   min-height: 1.2rem;
 }
+/* SIMULATEUR V2 */
+.sim-section { margin-bottom: 0.75rem; }
+.sim-label {
+  font-size: 0.78rem;
+  color: #a0aec0;
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.sim-label small { text-transform: none; font-size: 0.75rem; color: #4a5568; }
+.sim-bloc { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.75rem; }
+.sim-ligne {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #1e2535;
+  font-size: 0.88rem;
+}
+.sim-ligne:last-child { border-bottom: none; }
+.sim-ligne-label { color: #a0aec0; }
+.sim-ligne-total {
+  border-top: 1px solid #2d3748;
+  padding-top: 0.5rem;
+  margin-top: 0.25rem;
+  font-size: 0.82rem;
+}
