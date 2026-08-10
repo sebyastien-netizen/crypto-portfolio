@@ -553,7 +553,7 @@ totalValeur += valeurCompte;
         <div class="sim-row">
           <span>Si ${bot.token} atteint</span>
           <input type="number" id="sim-input-${bot.id}" placeholder="Prix en $" step="any"
-            oninput="simulerBot('${bot.id}', ${bot.quantite_token}, ${capitalTotal}, ${bot.grid_profit})">
+            oninput="simulerBot('${bot.id}', ${bot.quantite_token}, ${capitalTotal}, ${bot.grid_profit}, ${bot.prix_detention_moyen || 0}, ${bot.levier})"
           <span>$</span>
         </div>
         <div class="sim-result" id="sim-result-${bot.id}"></div>
@@ -576,22 +576,22 @@ totalValeur += valeurCompte;
 }
 
 // Simulateur
-function simulerBot(botId, quantite, capitalTotal, gridProfit) {
+function simulerBot(botId, quantite, capitalTotal, gridProfit, prixDetention, levier) {
   const input = document.getElementById(`sim-input-${botId}`);
   const result = document.getElementById(`sim-result-${botId}`);
   const prixCible = parseFloat(input.value);
   if (!prixCible || isNaN(prixCible)) { result.textContent = ''; return; }
 
-  const valeurCible = prixCible * quantite;
-  const pnlTendanceCible = valeurCible - capitalTotal;
-  const gainNetCible = gridProfit + pnlTendanceCible;
-  const pct = ((gainNetCible / capitalTotal) * 100).toFixed(2);
-  const signe = gainNetCible >= 0 ? '+' : '';
+  // PnL tendance = variation de prix × quantité × levier
+  const pnlTendanceSim = (prixCible - prixDetention) * quantite * levier;
+  const gainNetSim = gridProfit + pnlTendanceSim;
+  const pct = ((gainNetSim / capitalTotal) * 100).toFixed(2);
+  const signe = gainNetSim >= 0 ? '+' : '';
 
   result.innerHTML = `
-    Valeur position : <strong>${valeurCible.toLocaleString('fr-FR', { style:'currency', currency:'USD' })}</strong>
+    PnL tendance simulé : <strong class="${pnlTendanceSim >= 0 ? 'pos' : 'neg'}">${pnlTendanceSim.toLocaleString('fr-FR', { style:'currency', currency:'USD' })}</strong>
     &nbsp;|&nbsp;
-    Gain net estimé : <strong class="${gainNetCible >= 0 ? 'pos' : 'neg'}">${signe}${gainNetCible.toLocaleString('fr-FR', { style:'currency', currency:'USD' })} (${signe}${pct} %)</strong>
+    Gain net estimé : <strong class="${gainNetSim >= 0 ? 'pos' : 'neg'}">${signe}${gainNetSim.toLocaleString('fr-FR', { style:'currency', currency:'USD' })} (${signe}${pct} %)</strong>
   `;
 }
 
