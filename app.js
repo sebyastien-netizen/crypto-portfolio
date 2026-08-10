@@ -1008,10 +1008,13 @@ function calcATR(ohlcArr, period = 14) {
 
 // ── Fetch OHLC CoinGecko ─────────────────────────────
 
-async function fetchOHLC(cgId, days) {
-  const endpoint = `coins/${cgId}/ohlc?vs_currency=usd&days=${days}`;
-  const res = await fetch(`/api/coingecko?endpoint=${encodeURIComponent(endpoint)}`);
-  if (!res.ok) throw new Error(`CoinGecko ${cgId} erreur ${res.status}`);
+async function fetchOHLC(cgId, days, interval) {
+  // interval : 'daily' = 1440min, '4h' = 240min
+  const krakenInterval = interval === '4h' ? '240' : '1440';
+  const res = await fetch(
+    `/api/ohlc?cgId=${encodeURIComponent(cgId)}&interval=${krakenInterval}`
+  );
+  if (!res.ok) throw new Error(`Kraken ${cgId} erreur ${res.status}`);
   return await res.json();
 }
 
@@ -1294,19 +1297,19 @@ async function chargerScanner() {
     const btcToken = tokens.find(t => t.token === 'BTC');
     let btcDaily = null;
     if (btcToken) {
-      btcDaily = await fetchOHLC('bitcoin', 365);
-      await new Promise(r => setTimeout(r, 2000));
+btcDaily = await fetchOHLC('bitcoin', 365, 'daily');
+      await new Promise(r => setTimeout(r, 500));
     }
 
     const results = [];
     for (const t of tokens) {
       try {
-        const daily = (t.token === 'BTC' && btcDaily) ? btcDaily
-          : await fetchOHLC(t.coingecko_id, 365);
-        if (t.token !== 'BTC') await new Promise(r => setTimeout(r, 2500));
+const daily = (t.token === 'BTC' && btcDaily) ? btcDaily
+          : await fetchOHLC(t.coingecko_id, 365, 'daily');
+        if (t.token !== 'BTC') await new Promise(r => setTimeout(r, 500));
 
-        const h4 = await fetchOHLC(t.coingecko_id, 30);
-        await new Promise(r => setTimeout(r, 2500));
+        const h4 = await fetchOHLC(t.coingecko_id, 30, '4h');
+        await new Promise(r => setTimeout(r, 500));
 
         const result = analyserDepuisDonnees(t.token, t.coingecko_id, daily, h4, btcDaily);
         results.push(result);
