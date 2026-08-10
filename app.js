@@ -784,18 +784,20 @@ const [spot, staking, bots, pools, trades] = await Promise.all([
   }
 
   // Prix CoinGecko pour spot + staking
-  const tokensSpot = spot.map(p => p.coingecko_id).filter(Boolean);
-  const tokensStaking = staking.map(p => COINGECKO_IDS[p.token]).filter(Boolean);
-  const ids = [...new Set([...tokensSpot, ...tokensStaking])];
-  let prix = {};
-  if (ids.length) {
-    try {
-      const cgRes = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd`
-      );
-      prix = await cgRes.json();
-    } catch (e) { console.error('CoinGecko indisponible', e); }
-  }
+const tokensSpot = spot.map(p => p.coingecko_id).filter(Boolean);
+const tokensStaking = staking.map(p => COINGECKO_IDS[p.token]).filter(Boolean);
+const ids = [...new Set([...tokensSpot, ...tokensStaking])];
+let prix = {};
+if (ids.length) {
+  try {
+    const cgRes = await fetch(
+      `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd&t=${Date.now()}`,
+      { cache: 'no-store' }
+    );
+    prix = await cgRes.json();
+    console.log('Prix dashboard:', prix);
+  } catch (e) { console.error('CoinGecko indisponible', e); }
+}
 
   // ── Calcul par poche ──────────────────────────────
 
@@ -1319,7 +1321,10 @@ async function chargerScanner() {
 
     scannerResults = results;
     renderScanner(results);
+} catch(e) {
+    console.error('Scanner erreur globale:', e);
   } finally {
+    if (status) status.textContent = `Mis à jour à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
     if (btn) btn.disabled = false;
   }
 }
