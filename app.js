@@ -607,9 +607,9 @@ function simulerBot(botId, capitalInvesti, gridProfit, gainNetActuel, prixLive, 
     const margeSec = prixLive && nouvLiq > 0
       ? ((prixLive - nouvLiq) / prixLive * 100).toFixed(1)
       : null;
-    const liqLabel = nouvLiq <= 0
-      ? '<span class="pos">🟢 Liquidation impossible</span>'
-      : `<span class="${nouvLiq < prixLive * 0.15 ? 'neg' : ''}">${nouvLiq.toLocaleString('fr-FR', { style:'currency', currency:'USD' })}</span>`;
+const liqLabel = nouvLiq <= 0
+  ? '<span class="pos">🟢 Liquidation impossible</span>'
+  : `<span class="${injection > 0 ? 'pos' : nouvLiq < prixLive * 0.15 ? 'neg' : ''}">${nouvLiq.toLocaleString('fr-FR', { style:'currency', currency:'USD' })}</span>`;
 
     html += `
       <div class="sim-ligne">
