@@ -1,5 +1,5 @@
 const SUPABASE_URL = 'https://aoznychtuxqstwclzfx.supabase.co';
-const SUPABASE_ANON_KEY = 'REMPLACE_PAR_TA_CLE_ANON';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFvem55Y2h0dXhxc3R3Y2x6ZnhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNDEzMzEsImV4cCI6MjEwMTkxNzMzMX0.tEHKGLiDsU_AQ69l-URFXvRhcvkKlWf-y0i_16OEF3g';
 
 const headers = () => ({
   'Content-Type': 'application/json',
