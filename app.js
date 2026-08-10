@@ -344,12 +344,8 @@ async function chargerStaking() {
     `${SUPABASE_URL}/rest/v1/positions_passives?statut=eq.actif&order=protocole.asc&select=*`,
     { headers: headers() }
   );
-const positions = await res.json();
+  const positions = await res.json();
   if (!Array.isArray(positions)) return;
-  await renderStaking(positions);
-  
-}
-
   await renderStaking(positions);
 }
 
