@@ -1,1 +1,64 @@
-hello
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crypto Portfolio</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ÉCRAN LOGIN -->
+  <div id="screen-login">
+    <div class="login-box">
+      <h1>📈 Crypto Portfolio</h1>
+      <input type="email" id="login-email" placeholder="Email" />
+      <input type="password" id="login-password" placeholder="Mot de passe" />
+      <button id="btn-login">Connexion</button>
+      <p id="login-error" class="error hidden"></p>
+    </div>
+  </div>
+
+  <!-- APP PRINCIPALE -->
+  <div id="screen-app" class="hidden">
+
+    <header>
+      <h1>📈 Crypto Portfolio</h1>
+      <button id="btn-logout">Déconnexion</button>
+    </header>
+
+    <nav>
+      <button class="nav-btn active" data-tab="trades-perp">Trades PERP</button>
+      <button class="nav-btn" data-tab="positions">Staking / Lending</button>
+    </nav>
+
+    <!-- ONGLET TRADES PERP -->
+    <section id="tab-trades-perp" class="tab active">
+      <div class="recap-bar">
+        <div class="recap-card">
+          <span class="label">Total 2026</span>
+          <span class="value" id="total-pnl">—</span>
+        </div>
+        <div class="recap-card">
+          <span class="label">Trades</span>
+          <span class="value" id="total-trades">—</span>
+        </div>
+        <div class="recap-card">
+          <span class="label">Taux de réussite</span>
+          <span class="value" id="taux-reussite">—</span>
+        </div>
+      </div>
+
+      <div id="trades-par-mois"></div>
+    </section>
+
+    <!-- ONGLET STAKING / LENDING -->
+    <section id="tab-positions" class="tab hidden">
+      <p class="empty">Aucune position passive enregistrée.</p>
+    </section>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
