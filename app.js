@@ -471,6 +471,7 @@ const cgRes = await fetch(
         { cache: 'no-store' }
       );
       prix = await cgRes.json();
+      console.log('Prix CoinGecko:', prix, 'à', new Date().toLocaleTimeString());
     } catch (e) { console.error('CoinGecko indisponible', e); }
   }
 
