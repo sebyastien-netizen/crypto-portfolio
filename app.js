@@ -435,3 +435,187 @@ async function renderStaking(positions) {
   document.getElementById('staking-total').textContent =
     totalGlobal.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' });
 }
+// ─── BOTS PIONEX ─────────────────────────────────────
+
+async function chargerBots() {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/bots_pionex?order=nom.asc&select=*`,
+    { headers: headers() }
+  );
+  const bots = await res.json();
+  if (!Array.isArray(bots)) return;
+  await renderBots(bots);
+}
+
+async function renderBots(bots) {
+  // Prix live CoinGecko
+  const ids = [...new Set(bots.map(b => b.coingecko_id).filter(Boolean))];
+  let prix = {};
+  if (ids.length) {
+    try {
+      const cgRes = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd`
+      );
+      prix = await cgRes.json();
+    } catch (e) { console.error('CoinGecko indisponible', e); }
+  }
+
+  let totalCapital = 0, totalValeur = 0, totalGrid = 0, totalPnl = 0;
+
+  const container = document.getElementById('bots-liste');
+  container.innerHTML = '';
+
+  bots.forEach(bot => {
+    const prixLive = prix[bot.coingecko_id]?.usd || null;
+    const capitalTotal = bot.capital_investi + bot.marge_supplementaire;
+    const valeurPosition = prixLive ? prixLive * bot.quantite_token : null;
+    const pnlTendance = valeurPosition ? valeurPosition - (bot.quantite_token * (capitalTotal / bot.quantite_token)) : bot.pnl_tendance;
+    const gainNet = bot.grid_profit + bot.pnl_tendance;
+
+    totalCapital += capitalTotal;
+    if (valeurPosition) totalValeur += valeurPosition;
+    totalGrid += bot.grid_profit;
+    totalPnl += gainNet;
+
+    // Badge statut
+    const enPause = bot.statut === 'pause';
+    const procheAlerte = prixLive && prixLive < bot.prix_liquidation * 1.2;
+    const badgeClass = procheAlerte ? 'badge-alerte' : enPause ? 'badge-pause' : 'badge-actif';
+    const badgeLabel = procheAlerte ? '🚨 Alerte liquidation' : enPause ? '⏸ En pause' : '✅ Actif';
+
+    // Barre de prix
+    const range = bot.borne_haute - bot.borne_basse;
+    const positionPct = prixLive
+      ? Math.min(Math.max(((prixLive - bot.borne_basse) / range) * 100, 0), 100)
+      : 0;
+    const fillColor = enPause ? '#f6ad55' : '#3b82f6';
+
+    const card = document.createElement('div');
+    card.className = 'bot-card';
+    card.innerHTML = `
+      <div class="bot-header">
+        <span class="bot-nom">${bot.token} — ${bot.nom} ${bot.levier}x</span>
+        <span class="badge-statut ${badgeClass}">${badgeLabel}</span>
+      </div>
+
+      <div class="bot-barre-wrap">
+        <div class="bot-barre-labels">
+          <span>Borne basse : ${bot.borne_basse.toLocaleString()} $</span>
+          <span>Prix live : ${prixLive ? prixLive.toLocaleString() + ' $' : '—'}</span>
+          <span>Borne haute : ${bot.borne_haute.toLocaleString()} $</span>
+        </div>
+        <div class="bot-barre">
+          <div class="bot-barre-fill" style="width:${positionPct}%;background:${fillColor}"></div>
+          <div class="bot-barre-cursor" style="left:${positionPct}%"></div>
+        </div>
+      </div>
+
+      <div class="bot-grid">
+        <div class="bot-stat">
+          <span class="label">Capital engagé</span>
+          <span class="val">${capitalTotal.toLocaleString('fr-FR', { style:'currency', currency:'USD' })}</span>
+        </div>
+        <div class="bot-stat">
+          <span class="label">Position (${bot.quantite_token} ${bot.token})</span>
+          <span class="val">${valeurPosition ? valeurPosition.toLocaleString('fr-FR', { style:'currency', currency:'USD' }) : '—'}</span>
+        </div>
+        <div class="bot-stat">
+          <span class="label">Grid profit ✏️</span>
+          <span class="val editable">
+            <span id="grid-val-${bot.id}">${bot.grid_profit.toLocaleString('fr-FR', { style:'currency', currency:'USD' })}</span>
+            <button class="btn-edit" onclick="editGrid('${bot.id}', ${bot.grid_profit})">✏️</button>
+          </span>
+        </div>
+        <div class="bot-stat">
+          <span class="label">PnL tendance ✏️</span>
+          <span class="val editable">
+            <span class="${bot.pnl_tendance >= 0 ? 'pos' : 'neg'}" id="pnl-val-${bot.id}">${bot.pnl_tendance.toLocaleString('fr-FR', { style:'currency', currency:'USD' })}</span>
+            <button class="btn-edit" onclick="editPnl('${bot.id}', ${bot.pnl_tendance})">✏️</button>
+          </span>
+        </div>
+        <div class="bot-stat">
+          <span class="label">Gain net total</span>
+          <span class="val ${gainNet >= 0 ? 'pos' : 'neg'}">${gainNet.toLocaleString('fr-FR', { style:'currency', currency:'USD' })}</span>
+        </div>
+        <div class="bot-stat">
+          <span class="label">Prix liquidation</span>
+          <span class="val neg">⚠️ ${bot.prix_liquidation.toLocaleString()} $</span>
+        </div>
+      </div>
+
+      <div class="simulateur">
+        <h4>🔮 Simulateur de scénario</h4>
+        <div class="sim-row">
+          <span>Si ${bot.token} atteint</span>
+          <input type="number" id="sim-input-${bot.id}" placeholder="Prix en $" step="any"
+            oninput="simulerBot('${bot.id}', ${bot.quantite_token}, ${capitalTotal}, ${bot.grid_profit})">
+          <span>$</span>
+        </div>
+        <div class="sim-result" id="sim-result-${bot.id}"></div>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+
+  // Récap global
+  document.getElementById('bots-capital').textContent =
+    totalCapital.toLocaleString('fr-FR', { style:'currency', currency:'USD' });
+  document.getElementById('bots-valeur').textContent =
+    totalValeur ? totalValeur.toLocaleString('fr-FR', { style:'currency', currency:'USD' }) : '—';
+  document.getElementById('bots-grid').textContent =
+    totalGrid.toLocaleString('fr-FR', { style:'currency', currency:'USD' });
+  document.getElementById('bots-pnl').textContent =
+    totalPnl.toLocaleString('fr-FR', { style:'currency', currency:'USD' });
+  document.getElementById('bots-pnl').className =
+    `value ${totalPnl >= 0 ? 'pos' : 'neg'}`;
+}
+
+// Simulateur
+function simulerBot(botId, quantite, capitalTotal, gridProfit) {
+  const input = document.getElementById(`sim-input-${botId}`);
+  const result = document.getElementById(`sim-result-${botId}`);
+  const prixCible = parseFloat(input.value);
+  if (!prixCible || isNaN(prixCible)) { result.textContent = ''; return; }
+
+  const valeurCible = prixCible * quantite;
+  const pnlTendanceCible = valeurCible - capitalTotal;
+  const gainNetCible = gridProfit + pnlTendanceCible;
+  const pct = ((gainNetCible / capitalTotal) * 100).toFixed(2);
+  const signe = gainNetCible >= 0 ? '+' : '';
+
+  result.innerHTML = `
+    Valeur position : <strong>${valeurCible.toLocaleString('fr-FR', { style:'currency', currency:'USD' })}</strong>
+    &nbsp;|&nbsp;
+    Gain net estimé : <strong class="${gainNetCible >= 0 ? 'pos' : 'neg'}">${signe}${gainNetCible.toLocaleString('fr-FR', { style:'currency', currency:'USD' })} (${signe}${pct} %)</strong>
+  `;
+}
+
+// Édition grid profit
+async function editGrid(botId, valeurActuelle) {
+  const nouvelleValeur = prompt('Nouveau grid profit (USDT) :', valeurActuelle);
+  if (nouvelleValeur === null) return;
+  const val = parseFloat(nouvelleValeur);
+  if (isNaN(val)) return;
+
+  await fetch(`${SUPABASE_URL}/rest/v1/bots_pionex?id=eq.${botId}`, {
+    method: 'PATCH',
+    headers: { ...headers(), 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ grid_profit: val })
+  });
+  chargerBots();
+}
+
+// Édition PnL tendance
+async function editPnl(botId, valeurActuelle) {
+  const nouvelleValeur = prompt('Nouveau PnL tendance (USDT) — négatif si en perte :', valeurActuelle);
+  if (nouvelleValeur === null) return;
+  const val = parseFloat(nouvelleValeur);
+  if (isNaN(val)) return;
+
+  await fetch(`${SUPABASE_URL}/rest/v1/bots_pionex?id=eq.${botId}`, {
+    method: 'PATCH',
+    headers: { ...headers(), 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ pnl_tendance: val })
+  });
+  chargerBots();
+}
