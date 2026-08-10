@@ -148,3 +148,145 @@ document.getElementById('btn-logout').addEventListener('click', logout);
 document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => switchTab(btn.dataset.tab));
 });
+// ─── SPOT PORTFOLIO ──────────────────────────────────
+
+async function chargerSpot() {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/spot_positions?order=token.asc&select=*`,
+    { headers: headers() }
+  );
+  const positions = await res.json();
+  await renderSpot(positions);
+}
+
+async function renderSpot(positions) {
+  document.getElementById('spot-count').textContent = positions.length;
+
+  if (!positions.length) {
+    document.getElementById('spot-par-wallet').innerHTML =
+      '<p class="empty">Aucune position enregistrée.</p>';
+    document.getElementById('spot-total').textContent = '—';
+    return;
+  }
+
+  // Récupérer les prix CoinGecko
+  const ids = [...new Set(positions.map(p => p.coingecko_id).filter(Boolean))];
+  let prix = {};
+  if (ids.length) {
+    try {
+      const cgRes = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd`
+      );
+      prix = await cgRes.json();
+    } catch (e) {
+      console.error('CoinGecko indisponible', e);
+    }
+  }
+
+  // Grouper par wallet
+  const walletNoms = {
+    'kraken-seb': 'Kraken',
+    'rabby-seb': 'Rabby Wallet',
+    'pionex-seb': 'Pionex'
+  };
+
+  const parWallet = {};
+  positions.forEach(p => {
+    if (!parWallet[p.wallet_id]) parWallet[p.wallet_id] = [];
+    parWallet[p.wallet_id].push(p);
+  });
+
+  let totalGlobal = 0;
+  const container = document.getElementById('spot-par-wallet');
+  container.innerHTML = '';
+
+  Object.keys(parWallet).forEach(walletId => {
+    const liste = parWallet[walletId];
+    let totalWallet = 0;
+
+    const lignes = liste.map(p => {
+      const prixUnit = prix[p.coingecko_id]?.usd || null;
+      const valeur = prixUnit ? prixUnit * p.quantite : null;
+      if (valeur) totalWallet += valeur;
+
+      return `
+        <tr>
+          <td><strong>${p.token.toUpperCase()}</strong></td>
+          <td>${p.quantite}</td>
+          <td>${prixUnit ? prixUnit.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' }) : '<span class="prix-loading">—</span>'}</td>
+          <td>${valeur ? valeur.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' }) : '—'}</td>
+          <td>
+            <button class="btn-delete" data-id="${p.id}" onclick="supprimerSpot('${p.id}')">🗑</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    totalGlobal += totalWallet;
+
+    const bloc = document.createElement('div');
+    bloc.className = 'wallet-bloc';
+    bloc.innerHTML = `
+      <div class="wallet-titre">
+        <span>${walletNoms[walletId] || walletId}</span>
+        <span class="wallet-total">${totalWallet ? totalWallet.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' }) : '—'}</span>
+      </div>
+      <table class="spot-table">
+        <thead>
+          <tr>
+            <th>Token</th>
+            <th>Quantité</th>
+            <th>Prix</th>
+            <th>Valeur</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>${lignes}</tbody>
+      </table>
+    `;
+    container.appendChild(bloc);
+  });
+
+  document.getElementById('spot-total').textContent =
+    totalGlobal.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' });
+}
+
+async function ajouterSpot() {
+  const wallet_id = document.getElementById('spot-wallet').value;
+  const token = document.getElementById('spot-token').value.trim().toUpperCase();
+  const coingecko_id = document.getElementById('spot-coingecko').value.trim().toLowerCase();
+  const quantite = parseFloat(document.getElementById('spot-quantite').value);
+
+  if (!token || !quantite || isNaN(quantite)) return;
+
+  const id = 'spot-' + Date.now();
+  const body = {
+    id,
+    user_id: 'a494d43c-a915-4f34-875c-2b0ebd84d5fb',
+    wallet_id,
+    token,
+    coingecko_id: coingecko_id || null,
+    quantite
+  };
+
+  await fetch(`${SUPABASE_URL}/rest/v1/spot_positions`, {
+    method: 'POST',
+    headers: { ...headers(), 'Prefer': 'return=minimal' },
+    body: JSON.stringify(body)
+  });
+
+  // Reset form
+  document.getElementById('spot-token').value = '';
+  document.getElementById('spot-coingecko').value = '';
+  document.getElementById('spot-quantite').value = '';
+
+  chargerSpot();
+}
+
+async function supprimerSpot(id) {
+  await fetch(`${SUPABASE_URL}/rest/v1/spot_positions?id=eq.${id}`, {
+    method: 'DELETE',
+    headers: headers()
+  });
+  chargerSpot();
+}
