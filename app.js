@@ -324,3 +324,100 @@ async function supprimerSpot(id) {
   });
   chargerSpot();
 }
+// ─── STAKING / LENDING ───────────────────────────────
+
+async function chargerStaking() {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/positions_passives?statut=eq.actif&order=protocole.asc&select=*`,
+    { headers: headers() }
+  );
+  const positions = await res.json();
+  await renderStaking(positions);
+}
+
+async function renderStaking(positions) {
+  document.getElementById('staking-count').textContent = positions.length;
+
+  if (!positions.length) {
+    document.getElementById('staking-par-protocole').innerHTML =
+      '<p class="empty">Aucune position active.</p>';
+    document.getElementById('staking-total').textContent = '—';
+    return;
+  }
+
+  // Récupérer prix CoinGecko pour les tokens stakés
+  const ids = [...new Set(positions.map(p => COINGECKO_IDS[p.token]).filter(Boolean))];
+  let prix = {};
+  if (ids.length) {
+    try {
+      const cgRes = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd`
+      );
+      prix = await cgRes.json();
+    } catch (e) {
+      console.error('CoinGecko indisponible', e);
+    }
+  }
+
+  // Grouper par protocole
+  const parProtocole = {};
+  positions.forEach(p => {
+    if (!parProtocole[p.protocole]) parProtocole[p.protocole] = [];
+    parProtocole[p.protocole].push(p);
+  });
+
+  let totalGlobal = 0;
+  const container = document.getElementById('staking-par-protocole');
+  container.innerHTML = '';
+
+  Object.keys(parProtocole).sort().forEach(protocole => {
+    const liste = parProtocole[protocole];
+    let totalProtocole = 0;
+
+    const lignes = liste.map(p => {
+      const cgId = COINGECKO_IDS[p.token];
+      const prixUnit = cgId ? prix[cgId]?.usd : null;
+      const valeur = prixUnit ? prixUnit * p.montant_depose : null;
+      if (valeur) totalProtocole += valeur;
+
+      return `
+        <tr>
+          <td><strong>${p.token}</strong></td>
+          <td>${p.montant_depose}</td>
+          <td>${prixUnit ? prixUnit.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' }) : '—'}</td>
+          <td>${valeur ? valeur.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' }) : '—'}</td>
+          <td><span class="badge-staking">🔒 ${p.type}</span></td>
+          <td style="color:#718096;font-size:0.8rem">${p.notes || ''}</td>
+        </tr>
+      `;
+    }).join('');
+
+    totalGlobal += totalProtocole;
+
+    const bloc = document.createElement('div');
+    bloc.className = 'protocole-bloc';
+    bloc.innerHTML = `
+      <div class="protocole-titre">
+        <span>${protocole}</span>
+        <span>${totalProtocole ? totalProtocole.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' }) : '—'}</span>
+      </div>
+      <table class="staking-table">
+        <thead>
+          <tr>
+            <th>Token</th>
+            <th>Quantité stakée</th>
+            <th>Prix</th>
+            <th>Valeur</th>
+            <th>Type</th>
+            <th>Note</th>
+          </tr>
+        </thead>
+        <tbody>${lignes}</tbody>
+      </table>
+    `;
+    container.appendChild(bloc);
+  });
+
+  document.getElementById('staking-total').textContent =
+    totalGlobal.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' });
+}
