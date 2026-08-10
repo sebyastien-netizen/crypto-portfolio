@@ -26,6 +26,7 @@ async function login() {
 
   if (data.access_token) {
     currentSession = data.access_token;
+    localStorage.setItem('cp_token', data.access_token);
     document.getElementById('screen-login').classList.add('hidden');
     document.getElementById('screen-app').classList.remove('hidden');
     chargerTrades();
@@ -39,6 +40,7 @@ function logout() {
   currentSession = null;
   document.getElementById('screen-app').classList.add('hidden');
   document.getElementById('screen-login').classList.remove('hidden');
+  localStorage.removeItem('cp_token');
 }
 
 // ─── TRADES PERP ────────────────────────────────────
@@ -152,6 +154,15 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     if (btn.dataset.tab === 'spot') chargerSpot();
   });
 });
+
+// Restaurer la session au chargement
+const savedToken = localStorage.getItem('cp_token');
+if (savedToken) {
+  currentSession = savedToken;
+  document.getElementById('screen-login').classList.add('hidden');
+  document.getElementById('screen-app').classList.remove('hidden');
+  chargerTrades();
+}
 // ─── SPOT PORTFOLIO ──────────────────────────────────
 
 async function chargerSpot() {
