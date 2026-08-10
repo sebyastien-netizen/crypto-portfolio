@@ -553,7 +553,7 @@ totalValeur += valeurCompte;
         <div class="sim-row">
           <span>Si ${bot.token} atteint</span>
           <input type="number" id="sim-input-${bot.id}" placeholder="Prix en $" step="any"
-            oninput="simulerBot('${bot.id}', ${bot.capital_investi}, ${bot.grid_profit}, ${gainNet}, ${prixLive || 0}, 0.1246)"
+            oninput="simulerBot('${bot.id}', ${bot.capital_investi}, ${bot.grid_profit}, ${gainNet}, ${prixLive || 0}, ${bot.pente_simulateur || 0})"
           <span>$</span>
         </div>
         <div class="sim-result" id="sim-result-${bot.id}"></div>
