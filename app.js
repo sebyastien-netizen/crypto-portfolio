@@ -51,6 +51,15 @@ async function chargerTrades() {
     { headers: headers() }
   );
   const trades = await res.json();
+
+  // Si token expiré → retour login
+  if (!Array.isArray(trades)) {
+    localStorage.removeItem('cp_token');
+    currentSession = null;
+    document.getElementById('screen-app').classList.add('hidden');
+    document.getElementById('screen-login').classList.remove('hidden');
+    return;
+  }
   renderTrades(trades);
 }
 
@@ -172,7 +181,9 @@ async function chargerSpot() {
     { headers: headers() }
   );
   const positions = await res.json();
+  if (!Array.isArray(positions)) return;
   await renderSpot(positions);
+  
 }
 
 async function renderSpot(positions) {
@@ -332,7 +343,12 @@ async function chargerStaking() {
     `${SUPABASE_URL}/rest/v1/positions_passives?statut=eq.actif&order=protocole.asc&select=*`,
     { headers: headers() }
   );
-  const positions = await res.json();
+const positions = await res.json();
+  if (!Array.isArray(positions)) return;
+  await renderStaking(positions);
+  
+}
+
   await renderStaking(positions);
 }
 
