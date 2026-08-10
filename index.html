@@ -64,7 +64,29 @@
       <span class="value" id="taux-reussite">—</span>
     </div>
   </div>
-  <div id="trades-par-mois"></div>
+  <!-- FORMULAIRE AJOUT TRADE PERP -->
+<div class="form-bloc" style="margin-bottom:1.5rem">
+  <h3>Nouveau trade PERP</h3>
+  <div class="form-row">
+    <input type="date" id="perp-date-ouv" placeholder="Date ouverture" />
+    <input type="date" id="perp-date-clo" placeholder="Date clôture" />
+    <select id="perp-wallet">
+      <option value="kraken-seb">Kraken</option>
+    </select>
+    <input type="text" id="perp-paire" placeholder="Paire (ex: BTC/USD)" />
+    <select id="perp-sens">
+      <option value="long">Long</option>
+      <option value="short">Short</option>
+    </select>
+    <input type="number" id="perp-entree" placeholder="Montant entrée $" step="any" />
+    <input type="number" id="perp-frais-entree" placeholder="Frais entrée $" step="any" />
+    <input type="number" id="perp-sortie" placeholder="Montant sortie $" step="any" />
+    <input type="number" id="perp-frais-sortie" placeholder="Frais sortie $" step="any" />
+    <button id="btn-add-perp">+ Ajouter</button>
+  </div>
+</div>
+
+<div id="trades-par-mois"></div>
 </section>
 <!-- ONGLET SPOT -->
 <section id="tab-spot" class="tab hidden">
@@ -80,9 +102,31 @@
     </div>
   </div>
 
-  <!-- FORMULAIRE AJOUT -->
+<!-- FORMULAIRE TRANSACTION -->
   <div class="form-bloc">
-    <h3>Ajouter une position</h3>
+    <h3>Nouvelle transaction</h3>
+    <div class="form-row">
+      <select id="tx-wallet">
+        <option value="kraken-seb">Kraken</option>
+        <option value="rabby-seb">Rabby Wallet</option>
+        <option value="pionex-seb">Pionex</option>
+      </select>
+      <input type="date" id="tx-date" />
+      <select id="tx-sens">
+        <option value="achat">Achat</option>
+        <option value="vente">Vente</option>
+      </select>
+      <input type="text" id="tx-token" placeholder="Token (ex: BTC)" />
+      <input type="number" id="tx-quantite" placeholder="Quantité" step="any" />
+      <input type="number" id="tx-prix" placeholder="Prix unitaire $" step="any" />
+      <input type="number" id="tx-frais" placeholder="Frais $ (optionnel)" step="any" />
+      <button id="btn-add-tx">+ Ajouter</button>
+    </div>
+  </div>
+
+  <!-- FORMULAIRE AJOUT POSITION -->
+  <div class="form-bloc">
+    <h3>Ajouter une position manuelle</h3>
     <div class="form-row">
       <select id="spot-wallet">
         <option value="kraken-seb">Kraken</option>
