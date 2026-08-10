@@ -771,12 +771,17 @@ async function chargerDashboard() {
     fetch(`${SUPABASE_URL}/rest/v1/trades_perp?statut=eq.ferme&select=pnl_usd`, { headers: headers() })
   ]);
 
-  const [spot, staking, bots, pools, trades] = await Promise.all([
+const [spot, staking, bots, pools, trades] = await Promise.all([
     resSpot.json(), resStaking.json(), resBots.json(),
     resPools.json(), resTrades.json()
   ]);
 
-  if (!Array.isArray(spot) || !Array.isArray(bots)) return;
+  console.log('Dashboard data:', { spot, staking, bots, pools, trades });
+
+  if (!Array.isArray(spot) || !Array.isArray(bots)) {
+    console.error('Dashboard 401 ou données invalides:', { spot, bots });
+    return;
+  }
 
   // Prix CoinGecko pour spot + staking
   const tokensSpot = spot.map(p => p.coingecko_id).filter(Boolean);
