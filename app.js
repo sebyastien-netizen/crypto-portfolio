@@ -159,20 +159,22 @@ document.getElementById('btn-logout').addEventListener('click', logout);
 document.getElementById('btn-add-spot').addEventListener('click', ajouterSpot);
 document.getElementById('btn-add-tx').addEventListener('click', ajouterTransaction);
 document.getElementById('btn-add-perp').addEventListener('click', ajouterTradePerp);
+document.getElementById('btn-scanner-refresh').addEventListener('click', chargerScanner);
+document.getElementById('btn-snapshot').addEventListener('click', prendreSnapshot);
+document.getElementById('journal-filtre-token').addEventListener('change', chargerJournal);
+document.getElementById('journal-filtre-score').addEventListener('change', chargerJournal);
 document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     switchTab(btn.dataset.tab);
     if (btn.dataset.tab === 'dashboard') chargerDashboard();
     if (btn.dataset.tab === 'scanner') chargerScanner();
+    if (btn.dataset.tab === 'journal') chargerJournal();
     if (btn.dataset.tab === 'spot') chargerSpot();
     if (btn.dataset.tab === 'bots') chargerBots();
     if (btn.dataset.tab === 'pools') chargerPools();
     if (btn.dataset.tab === 'positions') chargerStaking();
   });
 });
-
-document.getElementById('btn-scanner-refresh')
-  .addEventListener('click', chargerScanner);
 
 // Rafraîchissement automatique des bots toutes les 60 secondes
 setInterval(() => {
@@ -181,7 +183,6 @@ setInterval(() => {
     chargerBots();
   }
 }, 60000);
-
 // Restaurer la session au chargement
 const savedToken = localStorage.getItem('cp_token');
 if (savedToken) {
@@ -1326,4 +1327,257 @@ const daily = (t.token === 'BTC' && btcDaily) ? btcDaily
     if (status) status.textContent = `Mis à jour à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
     if (btn) btn.disabled = false;
   }
+}
+// ─── SNAPSHOT ────────────────────────────────────────
+
+async function prendreSnapshot() {
+  const btn = document.getElementById('btn-snapshot');
+  const status = document.getElementById('scanner-status');
+
+  if (!scannerResults.length) {
+    alert('Lance d\'abord le scanner (⟳ Actualiser) avant de prendre un snapshot.');
+    return;
+  }
+
+  btn.disabled = true;
+  if (status) status.textContent = '📸 Snapshot en cours...';
+
+  // Récupérer BTC pour le snapshot
+  const btcResult = scannerResults.find(r => r.token === 'BTC');
+
+  const snapshots = scannerResults.map(r => ({
+    id: `snap-${r.token}-${Date.now()}`,
+    user_id: 'a494d43c-a915-4f34-875c-2b0ebd84d5fb',
+    token: r.token,
+    coingecko_id: r.cgId,
+    prix: r.currentPrice,
+    score: r.score,
+    cond1: r.cond1, cond2: r.cond2,
+    cond3: r.cond3, cond4: r.cond4, cond5: r.cond5,
+    biais: r.biais,
+    rsi_daily: r.rsi ? Math.round(r.rsi * 10) / 10 : null,
+    btc_prix: btcResult?.currentPrice || null,
+    btc_momentum_3j: btcResult?.btcPerf3D ? Math.round(btcResult.btcPerf3D * 100) / 100 : null,
+    mm20: r.mm20, mm50: r.mm50, mm100: r.mm100, mm200: r.mm200,
+    support_label: r.supportMM?.label || null,
+    support_prix: r.supportMM?.val || null,
+    target_label: r.targetMM?.label || null,
+    target_prix: r.targetMM?.val || null,
+    rr: r.rr ? Math.round(r.rr * 100) / 100 : null,
+    bb_bandwidth: r.bb?.bandwidth ? Math.round(r.bb.bandwidth * 10000) / 100 : null,
+    atr_pct: r.atrPct ? Math.round(r.atrPct * 100) / 100 : null
+  }));
+
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/scanner_snapshots`, {
+      method: 'POST',
+      headers: { ...headers(), 'Prefer': 'return=minimal' },
+      body: JSON.stringify(snapshots)
+    });
+
+    const now = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    if (status) status.textContent = `📸 Snapshot sauvegardé à ${now}`;
+
+    // Alertes setup ≥ 3
+    const alertes = snapshots.filter(s => s.score >= 3);
+    if (alertes.length) {
+      alertes.forEach(s => {
+        const row = document.querySelector(`.scanner-row[data-token="${s.token}"]`);
+        if (row) {
+          row.classList.add('alerte');
+          const tokenEl = row.querySelector('.scanner-token strong');
+          if (tokenEl && !tokenEl.querySelector('.badge-alerte-setup')) {
+            tokenEl.insertAdjacentHTML('afterend',
+              `<span class="badge-alerte-setup">🔔 Setup ${s.score}/5</span>`
+            );
+          }
+        }
+      });
+    }
+  } catch(e) {
+    console.error('Erreur snapshot:', e);
+    if (status) status.textContent = '❌ Erreur snapshot';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ─── JOURNAL ─────────────────────────────────────────
+
+async function chargerJournal() {
+  const filtreToken = document.getElementById('journal-filtre-token')?.value || '';
+  const filtreScore = document.getElementById('journal-filtre-score')?.value || '';
+
+  let url = `${SUPABASE_URL}/rest/v1/scanner_snapshots?order=date_snapshot.desc&select=*`;
+  if (filtreToken) url += `&token=eq.${filtreToken}`;
+  if (filtreScore) url += `&score=gte.${filtreScore}`;
+
+  const res = await fetch(url, { headers: headers() });
+  const snapshots = await res.json();
+  if (!Array.isArray(snapshots)) return;
+
+  renderJournal(snapshots);
+}
+
+function renderJournal(snapshots) {
+  // Stats
+  const total = snapshots.length;
+  const forts = snapshots.filter(s => s.score >= 4).length;
+  const watches = snapshots.filter(s => s.score === 3).length;
+  const parToken = {};
+  snapshots.forEach(s => {
+    if (!parToken[s.token]) parToken[s.token] = { total: 0, forts: 0 };
+    parToken[s.token].total++;
+    if (s.score >= 3) parToken[s.token].forts++;
+  });
+
+  const statsEl = document.getElementById('journal-stats');
+  statsEl.innerHTML = `
+    <div class="journal-stats-bar">
+      <div class="journal-stat-card">
+        <span class="label">Snapshots total</span>
+        <span class="value">${total}</span>
+      </div>
+      <div class="journal-stat-card">
+        <span class="label">Setups forts (≥4)</span>
+        <span class="value pos">${forts}</span>
+      </div>
+      <div class="journal-stat-card">
+        <span class="label">À surveiller (3)</span>
+        <span class="value" style="color:#f6ad55">${watches}</span>
+      </div>
+      ${Object.entries(parToken).map(([tok, d]) => `
+        <div class="journal-stat-card">
+          <span class="label">${tok} — score ≥3</span>
+          <span class="value">${d.forts}/${d.total}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  // Liste
+  const liste = document.getElementById('journal-liste');
+  liste.innerHTML = '';
+
+  if (!snapshots.length) {
+    liste.innerHTML = '<p class="empty">Aucun snapshot — lance le scanner et clique 📸</p>';
+    return;
+  }
+
+  snapshots.forEach(s => {
+    const sig = signalLabel(s.score);
+    const dateStr = new Date(s.date_snapshot).toLocaleString('fr-FR', {
+      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+    });
+    const rowClass = s.score >= 4 ? 'score-fort' : s.score >= 3 ? 'score-watch' : '';
+
+    const row = document.createElement('div');
+    row.className = `journal-row ${rowClass}`;
+    row.innerHTML = `
+      <div class="journal-row-main" onclick="toggleJournalDetail('${s.id}')">
+        <div class="journal-token">
+          <strong>${s.token}</strong>
+          <small>${dateStr}</small>
+        </div>
+        <div>${renderDots(s.score)} <span class="score-num">${s.score}/5</span></div>
+        <div style="color:${sig.color};font-size:0.82rem">${sig.label}</div>
+        <div class="journal-conditions">
+          ${[s.cond1, s.cond2, s.cond3, s.cond4, s.cond5].map(c =>
+            `<span class="cond-dot ${c ? 'cond-on' : 'cond-off'}"></span>`
+          ).join('')}
+        </div>
+        <div style="font-size:0.82rem;color:#a0aec0">${s.prix ? s.prix.toLocaleString('fr-FR', { style:'currency', currency:'USD', maximumFractionDigits:2 }) : '—'}</div>
+        <div style="color:#4a5568;font-size:0.7rem">▼</div>
+      </div>
+      <div class="journal-detail hidden" id="jdetail-${s.id}">
+        <div class="journal-detail-grid">
+          <div class="journal-detail-item">
+            <span class="jlabel">Biais</span>
+            <span class="jval">${s.biais || '—'}</span>
+          </div>
+          <div class="journal-detail-item">
+            <span class="jlabel">RSI daily</span>
+            <span class="jval ${s.rsi_daily >= 35 && s.rsi_daily <= 65 ? 'pos' : 'neg'}">${s.rsi_daily || '—'}</span>
+          </div>
+          <div class="journal-detail-item">
+            <span class="jlabel">Support (${s.support_label || '—'})</span>
+            <span class="jval">${s.support_prix ? s.support_prix.toLocaleString('fr-FR', { style:'currency', currency:'USD', maximumFractionDigits:2 }) : '—'}</span>
+          </div>
+          <div class="journal-detail-item">
+            <span class="jlabel">Cible (${s.target_label || '—'})</span>
+            <span class="jval">${s.target_prix ? s.target_prix.toLocaleString('fr-FR', { style:'currency', currency:'USD', maximumFractionDigits:2 }) : '—'}</span>
+          </div>
+          <div class="journal-detail-item">
+            <span class="jlabel">R/R estimé</span>
+            <span class="jval ${s.rr >= 1.5 ? 'pos' : 'neg'}">${s.rr || '—'}</span>
+          </div>
+          <div class="journal-detail-item">
+            <span class="jlabel">BTC prix</span>
+            <span class="jval">${s.btc_prix ? s.btc_prix.toLocaleString('fr-FR', { style:'currency', currency:'USD', maximumFractionDigits:0 }) : '—'}</span>
+          </div>
+          <div class="journal-detail-item">
+            <span class="jlabel">BTC momentum 3J</span>
+            <span class="jval ${s.btc_momentum_3j >= 1 ? 'pos' : 'neg'}">${s.btc_momentum_3j ? s.btc_momentum_3j.toFixed(2) + ' %' : '—'}</span>
+          </div>
+          <div class="journal-detail-item">
+            <span class="jlabel">ATR</span>
+            <span class="jval">${s.atr_pct ? s.atr_pct + ' %' : '—'}</span>
+          </div>
+          <div class="journal-detail-item">
+            <span class="jlabel">BB Bandwidth</span>
+            <span class="jval">${s.bb_bandwidth ? s.bb_bandwidth + ' %' : '—'}</span>
+          </div>
+        </div>
+        <div class="journal-actions">
+          <button class="btn-journal-action btn-journal-reel"
+            onclick="enregistrerSetup('${s.id}', '${s.token}', ${s.score}, 'reel')">
+            💰 Enregistrer comme trade réel
+          </button>
+          <button class="btn-journal-action"
+            onclick="enregistrerSetup('${s.id}', '${s.token}', ${s.score}, 'simulation')">
+            🧪 Enregistrer comme simulation
+          </button>
+        </div>
+        <textarea class="journal-note-input" id="note-${s.id}"
+          placeholder="Notes sur ce setup..." rows="2"
+          onblur="sauvegarderNote('${s.id}')"></textarea>
+      </div>
+    `;
+    liste.appendChild(row);
+  });
+}
+
+function toggleJournalDetail(id) {
+  document.getElementById(`jdetail-${id}`)?.classList.toggle('hidden');
+}
+
+async function enregistrerSetup(snapshotId, token, score, type) {
+  const note = document.getElementById(`note-${snapshotId}`)?.value || '';
+  const id = `setup-${Date.now()}`;
+
+  await fetch(`${SUPABASE_URL}/rest/v1/journal_setups`, {
+    method: 'POST',
+    headers: { ...headers(), 'Prefer': 'return=minimal' },
+    body: JSON.stringify({
+      id,
+      user_id: 'a494d43c-a915-4f34-875c-2b0ebd84d5fb',
+      token,
+      snapshot_id: snapshotId,
+      type,
+      score_setup: score,
+      notes: note,
+      statut: 'ouvert'
+    })
+  });
+
+  alert(`Setup ${token} enregistré comme ${type === 'reel' ? 'trade réel 💰' : 'simulation 🧪'}`);
+}
+
+async function sauvegarderNote(snapshotId) {
+  const note = document.getElementById(`note-${snapshotId}`)?.value || '';
+  await fetch(`${SUPABASE_URL}/rest/v1/scanner_snapshots?id=eq.${snapshotId}`, {
+    method: 'PATCH',
+    headers: { ...headers(), 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ notes: note })
+  });
 }
