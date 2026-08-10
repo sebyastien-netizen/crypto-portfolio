@@ -29,6 +29,7 @@
 
 <nav>
   <button class="nav-btn active" data-tab="dashboard">Dashboard</button>
+  <button class="nav-btn" data-tab="scanner">Scanner</button>
   <button class="nav-btn" data-tab="trades-perp">Trades PERP</button>
   <button class="nav-btn" data-tab="spot">Portfolio Spot</button>
   <button class="nav-btn" data-tab="bots">Bots Pionex</button>
@@ -36,7 +37,20 @@
   <button class="nav-btn" data-tab="positions">Staking / Lending</button>
 </nav>
 
-
+<!-- ONGLET SCANNER -->
+<section id="tab-scanner" class="tab hidden">
+  <div class="scanner-header">
+    <h2>🎯 Scanner de Setup</h2>
+    <div class="scanner-header-right">
+      <span id="scanner-status" style="color:#718096;font-size:0.85rem"></span>
+      <button id="btn-scanner-refresh" class="btn-refresh">⟳ Actualiser</button>
+    </div>
+  </div>
+  <div id="scanner-table"></div>
+  <div class="scanner-footer">
+    <button id="btn-add-scanner-token">+ Ajouter un token</button>
+  </div>
+</section>
 <!-- ONGLET DASHBOARD -->
 <section id="tab-dashboard" class="tab active">
   <div class="recap-bar">
@@ -46,6 +60,11 @@
     </div>
   </div>
   <div id="dash-details"></div>
+  <!-- Mini scanner BTC + ETH -->
+  <div class="dash-scanner-wrap">
+    <div class="dash-scanner-titre">🎯 Setup du moment</div>
+    <div id="dash-scanner"></div>
+  </div>
 </section>
 
 <!-- ONGLET TRADES PERP -->
