@@ -7,6 +7,7 @@ const KRAKEN_PAIRS = {
   'avalanche-2': 'AVAXUSD',
   'ripple':      'XRPUSD',
   'hyperliquid': 'HYPEUSD'
+  'binancecoin': 'BNBUSD'
 };
 
 module.exports = async function handler(req, res) {
