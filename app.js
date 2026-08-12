@@ -1218,7 +1218,7 @@ function renderScanner(results) {
 
   results.forEach(r => {
     const sig      = signalLabel(r.score);
-    const biaisIcon = r.biais === 'long' ? '🟢' : r.biais === 'short' ? '🔴' : '🟡';
+    const biaisIcon = r.biais === 'long' ? '🟢' : r.biais === 'short' ? '⚪' : '🟡';
     const biaisText = r.biais.charAt(0).toUpperCase() + r.biais.slice(1);
 
     const row = document.createElement('div');
