@@ -6,7 +6,7 @@ const KRAKEN_PAIRS = {
   'chainlink':   'LINKUSD',
   'avalanche-2': 'AVAXUSD',
   'ripple':      'XRPUSD',
-  'hyperliquid': 'HYPEUSD'
+  'hyperliquid': 'HYPEUSD',
   'binancecoin': 'BNBUSD'
 };
 
