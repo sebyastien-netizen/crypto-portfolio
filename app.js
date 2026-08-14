@@ -1421,6 +1421,7 @@ async function chargerJournal() {
   if (!Array.isArray(snapshots)) return;
 
   renderJournal(snapshots);
+  renderJournalChart(snapshots);
 }
 
 function renderJournal(snapshots) {
@@ -1784,4 +1785,85 @@ async function chargerPolymarketSuivis() {
     } catch(e) { console.error(e); }
   }
   container.innerHTML = cards.join('') || '<p class="empty">Aucun marché suivi.</p>';
+}
+// ─── GRAPHIQUE JOURNAL ────────────────────────────────
+
+let journalChartInstance = null;
+
+function renderJournalChart(snapshots) {
+  const canvas = document.getElementById('journal-chart');
+  if (!canvas || !window.Chart) return;
+
+  if (!snapshots.length) {
+    if (journalChartInstance) { journalChartInstance.destroy(); journalChartInstance = null; }
+    return;
+  }
+
+  // Trier par date croissante pour l'affichage chronologique
+  const sorted = [...snapshots].sort((a,b) => new Date(a.date_snapshot) - new Date(b.date_snapshot));
+
+  // Grouper par token
+  const parToken = {};
+  sorted.forEach(s => {
+    if (!parToken[s.token]) parToken[s.token] = [];
+    parToken[s.token].push({
+      x: s.date_snapshot,
+      y: s.score
+    });
+  });
+
+  const couleurs = {
+    'BTC': '#f6ad55',
+    'ETH': '#63b3ed',
+    'SOL': '#9f7aea',
+    'AAVE': '#68d391',
+    'HYPE': '#fc8181'
+  };
+
+  const datasets = Object.keys(parToken).map(token => ({
+    label: token,
+    data: parToken[token],
+    borderColor: couleurs[token] || '#a0aec0',
+    backgroundColor: 'transparent',
+    tension: 0.2,
+    pointRadius: 4,
+    pointHoverRadius: 6,
+    borderWidth: 2
+  }));
+
+  if (journalChartInstance) journalChartInstance.destroy();
+
+  journalChartInstance = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: { datasets },
+    options: {
+      responsive: true,
+      interaction: { mode: 'nearest', axis: 'x', intersect: false },
+      scales: {
+        x: {
+          type: 'time',
+          time: { unit: 'day', displayFormats: { day: 'dd/MM' } },
+          grid: { color: '#2d3748' },
+          ticks: { color: '#718096' }
+        },
+        y: {
+          min: 0, max: 5,
+          ticks: { stepSize: 1, color: '#718096' },
+          grid: { color: '#2d3748' }
+        }
+      },
+      plugins: {
+        legend: {
+          labels: { color: '#a0aec0', usePointStyle: true }
+        },
+        tooltip: {
+          backgroundColor: '#1a1f2e',
+          titleColor: '#e2e8f0',
+          bodyColor: '#a0aec0',
+          borderColor: '#2d3748',
+          borderWidth: 1
+        }
+      }
+    }
+  });
 }
