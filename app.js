@@ -163,6 +163,8 @@ document.getElementById('btn-scanner-refresh').addEventListener('click', charger
 document.getElementById('btn-snapshot').addEventListener('click', prendreSnapshot);
 document.getElementById('journal-filtre-token').addEventListener('change', chargerJournal);
 document.getElementById('journal-filtre-score').addEventListener('change', chargerJournal);
+document.getElementById('btn-pm-search').addEventListener('click', chercherPolymarket);
+document.getElementById('btn-pm-refresh').addEventListener('click', chargerPolymarketSuivis);
 document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     switchTab(btn.dataset.tab);
@@ -170,6 +172,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     if (btn.dataset.tab === 'scanner') chargerScanner();
     if (btn.dataset.tab === 'journal') chargerJournal();
     if (btn.dataset.tab === 'macro') chargerMacro();
+    if (btn.dataset.tab === 'polymarket') chargerPolymarketSuivis();
     if (btn.dataset.tab === 'spot') chargerSpot();
     if (btn.dataset.tab === 'bots') chargerBots();
     if (btn.dataset.tab === 'pools') chargerPools();
