@@ -887,3 +887,60 @@ nav {
   margin: 1.5rem 0 0.75rem;
 }
 .macro-section-titre:first-child { margin-top: 0; }
+/* POLYMARKET */
+.pm-card {
+  background: #1a1f2e;
+  border-radius: 10px;
+  padding: 1.1rem 1.4rem;
+  margin-bottom: 0.75rem;
+}
+.pm-question {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 0.6rem;
+  line-height: 1.4;
+}
+.pm-outcomes {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+.pm-outcome {
+  background: #0f1117;
+  border-radius: 8px;
+  padding: 0.5rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 100px;
+}
+.pm-outcome-label { font-size: 0.75rem; color: #718096; }
+.pm-outcome-pct { font-size: 1.1rem; font-weight: 700; }
+.pm-outcome-pct.high { color: #68d391; }
+.pm-outcome-pct.low { color: #fc8181; }
+.pm-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  color: #718096;
+}
+.btn-pm-follow {
+  background: #1a3a2a;
+  border: 1px solid #2d6a4f;
+  color: #68d391;
+  border-radius: 6px;
+  padding: 0.3rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.btn-pm-unfollow {
+  background: #3a1a1a;
+  border: 1px solid #6a2d2d;
+  color: #fc8181;
+  border-radius: 6px;
+  padding: 0.3rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
