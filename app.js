@@ -1035,11 +1035,27 @@ function analyserDepuisDonnees(token, cgId, daily, h4, btcDaily) {
   const mm100 = calcMA(closes1D, 100);
   const mm200 = calcMA(closes1D, 200);
 
-  // Condition 1 — Biais
-  const mmsOrdered = mm20 && mm50 && mm100 && mm200
+// Condition 1 — Biais (fort/faible/neutre)
+  const mmsOrderedLong = mm20 && mm50 && mm100 && mm200
     && mm20 > mm50 && mm50 > mm100 && mm100 > mm200;
+  const mmsOrderedShort = mm20 && mm50 && mm100 && mm200
+    && mm20 < mm50 && mm50 < mm100 && mm100 < mm200;
   const priceAboveMM50 = mm50 && currentPrice > mm50;
-  const cond1 = (mmsOrdered && priceAboveMM50) ? 1 : 0;
+  const priceBelowMM50 = mm50 && currentPrice < mm50;
+
+  const biaisFortLong = mmsOrderedLong && priceAboveMM50;
+  const biaisFortShort = mmsOrderedShort && priceBelowMM50;
+  const biaisFaibleLong = !biaisFortLong && mm100 && mm200
+    && currentPrice > mm100 && mm100 > mm200;
+  const biaisFaibleShort = !biaisFortShort && mm100 && mm200
+    && currentPrice < mm100 && mm100 < mm200;
+
+  let cond1 = 0;
+  let biaisType = 'neutre';
+  if (biaisFortLong) { cond1 = 1; biaisType = 'long_fort'; }
+  else if (biaisFortShort) { cond1 = 1; biaisType = 'short_fort'; }
+  else if (biaisFaibleLong) { cond1 = 0.5; biaisType = 'long_faible'; }
+  else if (biaisFaibleShort) { cond1 = 0.5; biaisType = 'short_faible'; }
 
   // Support & cible
   const mmsArr = [
@@ -1087,14 +1103,14 @@ function analyserDepuisDonnees(token, cgId, daily, h4, btcDaily) {
   // Condition 5 — Confluence manuelle
   const cond5 = 0;
 
-  const score = cond1 + cond2 + cond3 + cond4 + cond5;
-  const biais = (mmsOrdered && priceAboveMM50) ? 'long'
-    : (mm200 && currentPrice < mm200) ? 'short' : 'neutre';
+const score = cond1 + cond2 + cond3 + cond4 + cond5;
+  const biais = biaisType.includes('long') ? 'long'
+    : biaisType.includes('short') ? 'short' : 'neutre';
 
-  return {
+return {
     token, cgId, currentPrice,
     mm20, mm50, mm100, mm200,
-    mmsOrdered, priceAboveMM50, biais,
+    biaisType, biais,
     supportMM, targetMM, risk, reward, rr,
     btcPerf3D, btcAboveMM50,
     bb, atr, atrPct, bbSqueeze, rsi,
@@ -1151,9 +1167,9 @@ function renderDetail(r) {
   return `
     <div class="detail-grid">
       <div class="detail-section">
-        <div class="detail-titre">📊 Cond. 1 — Biais 1J ${chk(r.cond1)}</div>
-        <div class="detail-ligne"><span>Ordre MMs</span><span>${chk(r.mmsOrdered)}</span></div>
-        <div class="detail-ligne"><span>Prix > MM50</span><span>${chk(r.priceAboveMM50)}</span></div>
+<div class="detail-titre">📊 Cond. 1 — Biais 1J ${r.cond1 === 1 ? '✅' : r.cond1 === 0.5 ? '⚠️' : '❌'}</div>
+        <div class="detail-ligne"><span>Type de biais</span><span>${r.biaisType.replace('_', ' ')}</span></div>
+        <div class="detail-ligne"><span>Score condition</span><span>${r.cond1}/1</span></div>
         <div class="detail-ligne"><span>MM20</span><span>${fmt(r.mm20)} $</span></div>
         <div class="detail-ligne"><span>MM50</span><span>${fmt(r.mm50)} $</span></div>
         <div class="detail-ligne"><span>MM100</span><span>${fmt(r.mm100)} $</span></div>
