@@ -169,6 +169,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     if (btn.dataset.tab === 'dashboard') chargerDashboard();
     if (btn.dataset.tab === 'scanner') chargerScanner();
     if (btn.dataset.tab === 'journal') chargerJournal();
+    if (btn.dataset.tab === 'macro') chargerMacro();
     if (btn.dataset.tab === 'spot') chargerSpot();
     if (btn.dataset.tab === 'bots') chargerBots();
     if (btn.dataset.tab === 'pools') chargerPools();
@@ -1580,4 +1581,84 @@ async function sauvegarderNote(snapshotId) {
     headers: { ...headers(), 'Prefer': 'return=minimal' },
     body: JSON.stringify({ notes: note })
   });
+}
+// ─── CALENDRIER MACRO ────────────────────────────────
+
+async function chargerMacro() {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/macro_events?order=date_evenement.asc&select=*`,
+    { headers: headers() }
+  );
+  const events = await res.json();
+  if (!Array.isArray(events)) return;
+  renderMacro(events);
+}
+
+function renderMacro(events) {
+  const now = new Date();
+  now.setHours(0,0,0,0);
+
+  const aVenir = events.filter(e => new Date(e.date_evenement) >= now);
+  const passes = events.filter(e => new Date(e.date_evenement) < now)
+    .sort((a,b) => new Date(b.date_evenement) - new Date(a.date_evenement));
+
+  // Prochain événement dans le header
+  const next = aVenir[0];
+  const nextEl = document.getElementById('macro-next');
+  if (next) {
+    const joursNext = Math.ceil((new Date(next.date_evenement) - now) / 86400000);
+    nextEl.textContent = `Prochain : ${next.nom} dans ${joursNext}j`;
+  } else {
+    nextEl.textContent = '';
+  }
+
+  const impactLabels = {
+    'tres_eleve': '🔴 Impact très élevé',
+    'eleve': '🟠 Impact élevé',
+    'moyen': '🔵 Impact moyen',
+    'faible': '⚪ Impact faible'
+  };
+
+  function renderCard(e, isPast) {
+    const joursDiff = Math.ceil((new Date(e.date_evenement) - now) / 86400000);
+    const dateStr = new Date(e.date_evenement).toLocaleDateString('fr-FR', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    });
+    const impactClass = isPast ? 'impact-passe' : `impact-${e.impact}`;
+    const countdown = isPast
+      ? `<div class="jours">✓</div><div class="label">Passé</div>`
+      : joursDiff === 0
+        ? `<div class="jours">Auj.</div>`
+        : `<div class="jours">${joursDiff}j</div><div class="label">restants</div>`;
+
+    return `
+      <div class="macro-card ${impactClass}">
+        <div class="macro-info">
+          <div class="macro-nom">
+            ${e.nom}
+            <span class="macro-type-badge">${e.type}</span>
+          </div>
+          <div class="macro-date">📅 ${dateStr}${e.heure ? ' · ' + e.heure + ' (heure Paris)' : ''}</div>
+          <div class="macro-desc">${e.description || ''}</div>
+          ${!isPast ? `<span class="macro-impact-label">${impactLabels[e.impact] || e.impact}</span>` : ''}
+        </div>
+        <div class="macro-countdown">${countdown}</div>
+      </div>
+    `;
+  }
+
+  let html = '';
+  if (aVenir.length) {
+    html += '<div class="macro-section-titre">📆 À venir</div>';
+    html += aVenir.map(e => renderCard(e, false)).join('');
+  }
+  if (passes.length) {
+    html += '<div class="macro-section-titre">🗄️ Passés</div>';
+    html += passes.map(e => renderCard(e, true)).join('');
+  }
+  if (!aVenir.length && !passes.length) {
+    html = '<p class="empty">Aucun événement enregistré.</p>';
+  }
+
+  document.getElementById('macro-liste').innerHTML = html;
 }
