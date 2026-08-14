@@ -2,7 +2,7 @@ module.exports = async function handler(req, res) {
   const { search } = req.query;
   if (!search) return res.status(400).json({ error: 'search manquant' });
 
-  const url = `https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=100&order=volume&ascending=false`;
+  const url = `https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=500&order=volume&ascending=false`;
 
   try {
     const pmRes = await fetch(url);
