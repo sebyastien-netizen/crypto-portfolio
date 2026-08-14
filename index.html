@@ -32,6 +32,7 @@
   <button class="nav-btn" data-tab="scanner">Scanner</button>
   <button class="nav-btn" data-tab="journal">Journal</button>
   <button class="nav-btn" data-tab="macro">Calendrier Macro</button>
+  <button class="nav-btn" data-tab="polymarket">Paris</button>
   <button class="nav-btn" data-tab="trades-perp">Trades PERP</button>
   <button class="nav-btn" data-tab="spot">Portfolio Spot</button>
   <button class="nav-btn" data-tab="bots">Bots Pionex</button>
@@ -54,6 +55,7 @@
     <button id="btn-add-scanner-token">+ Ajouter un token</button>
   </div>
 </section>
+    
     <!-- ONGLET JOURNAL -->
 <section id="tab-journal" class="tab hidden">
   <div class="scanner-header">
@@ -88,7 +90,25 @@
   </div>
   <div id="macro-liste"></div>
 </section>
-    
+    <!-- ONGLET POLYMARKET -->
+<section id="tab-polymarket" class="tab hidden">
+  <div class="scanner-header">
+    <h2>🎲 Marchés de Prédiction</h2>
+    <div class="scanner-header-right">
+      <button id="btn-pm-refresh" class="btn-refresh">⟳ Actualiser</button>
+    </div>
+  </div>
+  <div class="form-bloc">
+    <h3>Rechercher un marché</h3>
+    <div class="form-row">
+      <input type="text" id="pm-search" placeholder="Ex: Bitcoin, Clarity Act, Fed rate..." />
+      <button id="btn-pm-search">🔍 Chercher</button>
+    </div>
+  </div>
+  <div id="pm-resultats"></div>
+  <div class="macro-section-titre">📌 Marchés suivis</div>
+  <div id="pm-suivis"></div>
+</section>
 <!-- ONGLET DASHBOARD -->
 <section id="tab-dashboard" class="tab active">
   <div class="recap-bar">
