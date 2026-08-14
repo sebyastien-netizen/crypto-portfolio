@@ -31,6 +31,7 @@
   <button class="nav-btn active" data-tab="dashboard">Dashboard</button>
   <button class="nav-btn" data-tab="scanner">Scanner</button>
   <button class="nav-btn" data-tab="journal">Journal</button>
+  <button class="nav-btn" data-tab="macro">Calendrier Macro</button>
   <button class="nav-btn" data-tab="trades-perp">Trades PERP</button>
   <button class="nav-btn" data-tab="spot">Portfolio Spot</button>
   <button class="nav-btn" data-tab="bots">Bots Pionex</button>
@@ -76,6 +77,18 @@
   <div id="journal-stats"></div>
   <div id="journal-liste"></div>
 </section>
+    
+    <!-- ONGLET CALENDRIER MACRO -->
+<section id="tab-macro" class="tab hidden">
+  <div class="scanner-header">
+    <h2>🏛️ Calendrier Macro US</h2>
+    <div class="scanner-header-right">
+      <span id="macro-next" style="color:#718096;font-size:0.85rem"></span>
+    </div>
+  </div>
+  <div id="macro-liste"></div>
+</section>
+    
 <!-- ONGLET DASHBOARD -->
 <section id="tab-dashboard" class="tab active">
   <div class="recap-bar">
