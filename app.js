@@ -1662,3 +1662,123 @@ function renderMacro(events) {
 
   document.getElementById('macro-liste').innerHTML = html;
 }
+// ─── POLYMARKET ──────────────────────────────────────
+
+async function chercherPolymarket() {
+  const query = document.getElementById('pm-search').value.trim();
+  if (!query) return;
+
+  const container = document.getElementById('pm-resultats');
+  container.innerHTML = '<p class="empty">Recherche en cours...</p>';
+
+  try {
+    const res = await fetch(`/api/polymarket?search=${encodeURIComponent(query)}`);
+    const markets = await res.json();
+
+    if (!Array.isArray(markets) || !markets.length) {
+      container.innerHTML = '<p class="empty">Aucun marché trouvé.</p>';
+      return;
+    }
+
+    container.innerHTML = markets.slice(0, 10).map(m => renderPmCard(m, false)).join('');
+  } catch(e) {
+    container.innerHTML = '<p class="empty">Erreur de recherche.</p>';
+    console.error(e);
+  }
+}
+
+function renderPmCard(market, isFollowed) {
+  let outcomes = [];
+  try {
+    const prices = JSON.parse(market.outcomePrices || '[]');
+    const labels = JSON.parse(market.outcomes || '[]');
+    outcomes = labels.map((label, i) => ({
+      label,
+      pct: prices[i] ? (parseFloat(prices[i]) * 100).toFixed(0) : '—'
+    }));
+  } catch(e) {}
+
+  const volume = market.volume ? parseFloat(market.volume).toLocaleString('fr-FR', { maximumFractionDigits: 0 }) : '—';
+
+  return `
+    <div class="pm-card">
+      <div class="pm-question">${market.question || 'Question inconnue'}</div>
+      <div class="pm-outcomes">
+        ${outcomes.map(o => `
+          <div class="pm-outcome">
+            <span class="pm-outcome-label">${o.label}</span>
+            <span class="pm-outcome-pct ${o.pct >= 60 ? 'high' : o.pct <= 30 ? 'low' : ''}">${o.pct}%</span>
+          </div>
+        `).join('')}
+      </div>
+      <div class="pm-meta">
+        <span>💰 Volume: ${volume} $</span>
+        ${isFollowed
+          ? `<button class="btn-pm-unfollow" onclick="unfollowPolymarket('${market.id}')">✕ Retirer</button>`
+          : `<button class="btn-pm-follow" onclick="followPolymarket('${market.id}', '${(market.question || '').replace(/'/g, "\\'")}', '${market.slug || ''}')">+ Suivre</button>`
+        }
+      </div>
+    </div>
+  `;
+}
+
+async function followPolymarket(id, question, slug) {
+  await fetch(`${SUPABASE_URL}/rest/v1/polymarket_watch`, {
+    method: 'POST',
+    headers: { ...headers(), 'Prefer': 'return=minimal' },
+    body: JSON.stringify({
+      id: 'pm-' + id,
+      user_id: 'a494d43c-a915-4f34-875c-2b0ebd84d5fb',
+      question, slug
+    })
+  });
+  chargerPolymarketSuivis();
+}
+
+async function unfollowPolymarket(id) {
+  await fetch(`${SUPABASE_URL}/rest/v1/polymarket_watch?id=eq.pm-${id}`, {
+    method: 'DELETE',
+    headers: headers()
+  });
+  chargerPolymarketSuivis();
+}
+
+async function chargerPolymarketSuivis() {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/polymarket_watch?actif=eq.true&select=*`,
+    { headers: headers() }
+  );
+  const suivis = await res.json();
+  if (!Array.isArray(suivis)) return;
+
+  const container = document.getElementById('pm-suivis');
+  if (!suivis.length) {
+    container.innerHTML = '<p class="empty">Aucun marché suivi — recherche et clique "+ Suivre".</p>';
+    return;
+  }
+
+  // Refetch les données fraîches pour chaque marché suivi
+  container.innerHTML = '<p class="empty">Chargement...</p>';
+  const cards = [];
+  for (const s of suivis) {
+    try {
+      const res2 = await fetch(`/api/polymarket?search=${encodeURIComponent(s.question.slice(0, 30))}`);
+      const markets = await res2.json();
+      const match = Array.isArray(markets) ? markets.find(m => 'pm-' + m.id === s.id) : null;
+      if (match) {
+        cards.push(renderPmCard(match, true));
+      } else {
+        cards.push(`
+          <div class="pm-card">
+            <div class="pm-question">${s.question}</div>
+            <div class="pm-meta">
+              <span style="color:#4a5568">Données non actualisées</span>
+              <button class="btn-pm-unfollow" onclick="unfollowPolymarket('${s.id.replace('pm-','')}')">✕ Retirer</button>
+            </div>
+          </div>
+        `);
+      }
+    } catch(e) { console.error(e); }
+  }
+  container.innerHTML = cards.join('') || '<p class="empty">Aucun marché suivi.</p>';
+}
