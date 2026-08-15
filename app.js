@@ -1073,18 +1073,25 @@ function analyserDepuisDonnees(token, cgId, daily, h4, btcDaily) {
   const reward = targetMM  ? (targetMM.val - currentPrice)  / currentPrice * 100 : null;
   const rr     = risk && reward && risk > 0 ? reward / risk : null;
 
-  // Condition 2 — Momentum BTC
-  let cond2 = 0, btcPerf3D = null, btcAboveMM50 = false;
-  const btcRef = (token === 'BTC') ? daily : btcDaily;
-  if (btcRef && btcRef.length >= 4) {
-    const btcCloses  = btcRef.map(c => c[4]);
-    const btcCurrent = btcCloses[btcCloses.length - 1];
-    const btc3DAgo   = btcCloses[btcCloses.length - 4];
-    const btcMM50    = calcMA(btcCloses, 50);
-    btcPerf3D    = ((btcCurrent - btc3DAgo) / btc3DAgo) * 100;
-    btcAboveMM50 = btcMM50 && btcCurrent > btcMM50;
+// Condition 2 — Momentum BTC (bidirectionnel selon le biais détecté en Condition 1)
+let cond2 = 0, btcPerf3D = null, btcAboveMM50 = false, btcBelowMM50 = false;
+const direction = biaisType.includes('long') ? 'long'
+  : biaisType.includes('short') ? 'short' : null;
+const btcRef = (token === 'BTC') ? daily : btcDaily;
+if (btcRef && btcRef.length >= 4) {
+  const btcCloses  = btcRef.map(c => c[4]);
+  const btcCurrent = btcCloses[btcCloses.length - 1];
+  const btc3DAgo   = btcCloses[btcCloses.length - 4];
+  const btcMM50    = calcMA(btcCloses, 50);
+  btcPerf3D    = ((btcCurrent - btc3DAgo) / btc3DAgo) * 100;
+  btcAboveMM50 = btcMM50 && btcCurrent > btcMM50;
+  btcBelowMM50 = btcMM50 && btcCurrent < btcMM50;
+  if (direction === 'long') {
     cond2 = (btcAboveMM50 && btcPerf3D >= 1 && btcPerf3D <= 8) ? 1 : 0;
+  } else if (direction === 'short') {
+    cond2 = (btcBelowMM50 && btcPerf3D <= -1 && btcPerf3D >= -8) ? 1 : 0;
   }
+}
 
   // Indicateurs 4H
   const closes4H = h4.map(c => c[4]);
@@ -1112,7 +1119,7 @@ return {
     mm20, mm50, mm100, mm200,
     biaisType, biais,
     supportMM, targetMM, risk, reward, rr,
-    btcPerf3D, btcAboveMM50,
+    btcPerf3D, btcAboveMM50, btcBelowMM50,
     bb, atr, atrPct, bbSqueeze, rsi,
     cond1, cond2, cond3, cond4, cond5, score
   };
