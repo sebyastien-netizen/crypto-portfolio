@@ -1154,13 +1154,21 @@ function fmt(v, dec = 2) {
 function chk(c) { return c ? '✅' : '❌'; }
 
 // ── Render scanner ────────────────────────────────────
-
 function genererSynthese(r) {
   const parties = [];
-  if (r.cond1) parties.push(`biais long confirmé (MMs ordonnées)`);
-  else parties.push('biais non confirmé — MMs non ordonnées ou prix sous MM50');
-  if (r.cond2) parties.push(`momentum BTC solide (${pct(r.btcPerf3D)} sur 3J)`);
-  else parties.push('momentum BTC insuffisant');
+  if (r.cond1) {
+    const label = r.biaisType.includes('short') ? 'short' : 'long';
+    const force = r.biaisType.includes('fort') ? 'fort' : 'faible';
+    parties.push(`biais ${label} ${force} confirmé (MMs ordonnées)`);
+  } else {
+    parties.push('biais non confirmé — MMs non ordonnées');
+  }
+  if (r.cond2) {
+    const sensBtc = r.biais === 'short' ? 'baissier' : 'haussier';
+    parties.push(`momentum BTC ${sensBtc} solide (${pct(r.btcPerf3D)} sur 3J)`);
+  } else {
+    parties.push('momentum BTC insuffisant');
+  }
   if (r.bbSqueeze) parties.push('compression Bollinger détectée');
   else if (r.cond3) parties.push(`volatilité ATR suffisante (${r.atrPct.toFixed(1)} %)`);
   else parties.push('pas de compression ni de volatilité suffisante');
@@ -1169,7 +1177,6 @@ function genererSynthese(r) {
   if (r.rr && r.rr >= 1.5) parties.push(`R/R de ${r.rr.toFixed(2)}`);
   return parties.join(', ') + '.';
 }
-
 function renderDetail(r) {
   return `
     <div class="detail-grid">
