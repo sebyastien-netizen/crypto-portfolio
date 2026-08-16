@@ -1174,6 +1174,33 @@ function genererSynthese(r) {
   if (r.rr && r.rr >= 1.5) parties.push(`R/R de ${r.rr.toFixed(2)}`);
   return parties.join(', ') + '.';
 }
+// ── Génère les lignes MM triées par prix, avec le prix actuel inséré à sa position ──
+function renderMMTriees(r) {
+  const mms = [
+    { label: 'MM20',  val: r.mm20,  couleur: '#4ade80' }, // vert
+    { label: 'MM50',  val: r.mm50,  couleur: '#facc15' }, // jaune
+    { label: 'MM100', val: r.mm100, couleur: '#fb923c' }, // orange
+    { label: 'MM200', val: r.mm200, couleur: '#f87171' }  // rouge
+  ].filter(m => m.val).sort((a, b) => b.val - a.val);
+
+  let html = '';
+  let prixInsere = false;
+  mms.forEach((m, i) => {
+    if (!prixInsere && m.val < r.currentPrice) {
+      html += `<div class="detail-separateur"></div>
+        <div class="detail-ligne detail-prix-actuel"><span>PRIX</span><span>${fmt(r.currentPrice)} $</span></div>
+        <div class="detail-separateur"></div>`;
+      prixInsere = true;
+    }
+    html += `<div class="detail-ligne"><span><span class="mm-dot" style="background:${m.couleur}"></span>${m.label}</span><span>${fmt(m.val)} $</span></div>`;
+  });
+  if (!prixInsere) {
+    html += `<div class="detail-separateur"></div>
+      <div class="detail-ligne detail-prix-actuel"><span>PRIX</span><span>${fmt(r.currentPrice)} $</span></div>
+      <div class="detail-separateur"></div>`;
+  }
+  return html;
+}
 function renderDetail(r) {
   return `
     <div class="detail-grid">
