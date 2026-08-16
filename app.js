@@ -1028,13 +1028,11 @@ async function fetchOHLC(cgId, days, interval) {
 function analyserDepuisDonnees(token, cgId, daily, h4, btcDaily) {
   const closes1D = daily.map(c => c[4]);
   const currentPrice = closes1D[closes1D.length - 1];
-
   // MAs journalières
   const mm20  = calcMA(closes1D, 20);
   const mm50  = calcMA(closes1D, 50);
   const mm100 = calcMA(closes1D, 100);
   const mm200 = calcMA(closes1D, 200);
-
 // Condition 1 — Biais (fort/faible/neutre)
   const mmsOrderedLong = mm20 && mm50 && mm100 && mm200
     && mm20 > mm50 && mm50 > mm100 && mm100 > mm200;
@@ -1042,37 +1040,35 @@ function analyserDepuisDonnees(token, cgId, daily, h4, btcDaily) {
     && mm20 < mm50 && mm50 < mm100 && mm100 < mm200;
   const priceAboveMM50 = mm50 && currentPrice > mm50;
   const priceBelowMM50 = mm50 && currentPrice < mm50;
-
   const biaisFortLong = mmsOrderedLong && priceAboveMM50;
   const biaisFortShort = mmsOrderedShort && priceBelowMM50;
   const biaisFaibleLong = !biaisFortLong && mm100 && mm200
     && currentPrice > mm100 && mm100 > mm200;
   const biaisFaibleShort = !biaisFortShort && mm100 && mm200
     && currentPrice < mm100 && mm100 < mm200;
-
   let cond1 = 0;
   let biaisType = 'neutre';
   if (biaisFortLong) { cond1 = 1; biaisType = 'long_fort'; }
   else if (biaisFortShort) { cond1 = 1; biaisType = 'short_fort'; }
   else if (biaisFaibleLong) { cond1 = 0.5; biaisType = 'long_faible'; }
   else if (biaisFaibleShort) { cond1 = 0.5; biaisType = 'short_faible'; }
-
-  // Support & cible
+  // Support & cible (bidirectionnel selon le sens détecté ci-dessus)
   const mmsArr = [
     { val: mm20, label: 'MM20' },
     { val: mm50, label: 'MM50' },
     { val: mm100, label: 'MM100' },
     { val: mm200, label: 'MM200' }
   ].filter(m => m.val);
-
   const below = mmsArr.filter(m => m.val < currentPrice).sort((a, b) => b.val - a.val);
   const above = mmsArr.filter(m => m.val > currentPrice).sort((a, b) => a.val - b.val);
-  const supportMM = below[0] || null;
-  const targetMM  = above[0] || null;
-  const risk   = supportMM ? (currentPrice - supportMM.val) / currentPrice * 100 : null;
-  const reward = targetMM  ? (targetMM.val - currentPrice)  / currentPrice * 100 : null;
+  const isShort = biaisType.includes('short');
+  // Long : support = MM la plus proche en dessous, cible = MM la plus proche au-dessus
+  // Short : support (résistance à ne pas dépasser) = MM au-dessus, cible = MM en dessous
+  const supportMM = isShort ? (above[0] || null) : (below[0] || null);
+  const targetMM  = isShort ? (below[0] || null) : (above[0] || null);
+  const risk   = supportMM ? Math.abs(currentPrice - supportMM.val) / currentPrice * 100 : null;
+  const reward = targetMM  ? Math.abs(targetMM.val - currentPrice)  / currentPrice * 100 : null;
   const rr     = risk && reward && risk > 0 ? reward / risk : null;
-
 // Condition 2 — Momentum BTC (bidirectionnel selon le biais détecté en Condition 1)
 let cond2 = 0, btcPerf3D = null, btcAboveMM50 = false, btcBelowMM50 = false;
 const direction = biaisType.includes('long') ? 'long'
