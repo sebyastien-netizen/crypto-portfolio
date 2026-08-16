@@ -1042,10 +1042,11 @@ function analyserDepuisDonnees(token, cgId, daily, h4, btcDaily) {
   const priceBelowMM50 = mm50 && currentPrice < mm50;
   const biaisFortLong = mmsOrderedLong && priceAboveMM50;
   const biaisFortShort = mmsOrderedShort && priceBelowMM50;
-  const biaisFaibleLong = !biaisFortLong && mm100 && mm200
-    && currentPrice > mm100 && mm100 > mm200;
-  const biaisFaibleShort = !biaisFortShort && mm100 && mm200
-    && currentPrice < mm100 && mm100 < mm200;
+  // Biais faible : MM50/MM100/MM200 alignées (MM20 ignorée — trop réactive, bruit court terme)
+  const mm50to200OrderedLong = mm50 && mm100 && mm200 && mm50 > mm100 && mm100 > mm200;
+  const mm50to200OrderedShort = mm50 && mm100 && mm200 && mm50 < mm100 && mm100 < mm200;
+  const biaisFaibleLong = !biaisFortLong && mm50to200OrderedLong && priceAboveMM50;
+  const biaisFaibleShort = !biaisFortShort && mm50to200OrderedShort && priceBelowMM50;
   let cond1 = 0;
   let biaisType = 'neutre';
   if (biaisFortLong) { cond1 = 1; biaisType = 'long_fort'; }
