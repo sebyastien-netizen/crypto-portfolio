@@ -1208,10 +1208,7 @@ function renderDetail(r) {
 <div class="detail-titre">📊 Cond. 1 — Biais 1J ${r.cond1 === 1 ? '✅' : r.cond1 === 0.5 ? '⚠️' : '❌'}</div>
         <div class="detail-ligne"><span>Type de biais</span><span>${r.biaisType.replace('_', ' ')}</span></div>
         <div class="detail-ligne"><span>Score condition</span><span>${r.cond1}/1</span></div>
-        <div class="detail-ligne"><span>MM20</span><span>${fmt(r.mm20)} $</span></div>
-        <div class="detail-ligne"><span>MM50</span><span>${fmt(r.mm50)} $</span></div>
-        <div class="detail-ligne"><span>MM100</span><span>${fmt(r.mm100)} $</span></div>
-        <div class="detail-ligne"><span>MM200</span><span>${fmt(r.mm200)} $</span></div>
+${renderMMTriees(r)}
         ${r.supportMM ? `<div class="detail-ligne"><span>Support (${r.supportMM.label})</span><span>${fmt(r.supportMM.val)} $ (${pct(-r.risk)})</span></div>` : ''}
         ${r.targetMM  ? `<div class="detail-ligne"><span>Cible (${r.targetMM.label})</span><span>${fmt(r.targetMM.val)} $ (+${r.reward?.toFixed(2)} %)</span></div>` : ''}
         ${r.rr ? `<div class="detail-ligne detail-rr"><span>R/R estimé</span><span class="${r.rr >= 1.5 ? 'pos' : 'neg'}">${r.rr.toFixed(2)}</span></div>` : ''}
