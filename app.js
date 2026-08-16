@@ -1193,14 +1193,20 @@ function renderDetail(r) {
         ${r.rr ? `<div class="detail-ligne detail-rr"><span>R/R estimé</span><span class="${r.rr >= 1.5 ? 'pos' : 'neg'}">${r.rr.toFixed(2)}</span></div>` : ''}
       </div>
 
-      <div class="detail-section">
+<div class="detail-section">
         <div class="detail-titre">₿ Cond. 2 — Momentum BTC ${chk(r.cond2)}</div>
-        <div class="detail-ligne"><span>BTC > MM50 1J</span><span>${chk(r.btcAboveMM50)}</span></div>
-        <div class="detail-ligne"><span>Perf BTC 3J</span>
-          <span class="${r.btcPerf3D >= 1 && r.btcPerf3D <= 8 ? 'pos' : 'neg'}">${pct(r.btcPerf3D)}</span>
+        <div class="detail-ligne"><span>${r.biais === 'short' ? 'BTC < MM50 1J' : 'BTC > MM50 1J'}</span>
+          <span>${chk(r.biais === 'short' ? r.btcBelowMM50 : r.btcAboveMM50)}</span>
         </div>
-        <div class="detail-ligne"><span>Zone cible (1 % – 8 %)</span>
-          <span>${chk(r.btcPerf3D >= 1 && r.btcPerf3D <= 8)}</span>
+        <div class="detail-ligne"><span>Perf BTC 3J</span>
+          <span class="${r.biais === 'short'
+            ? (r.btcPerf3D <= -1 && r.btcPerf3D >= -8 ? 'pos' : 'neg')
+            : (r.btcPerf3D >= 1 && r.btcPerf3D <= 8 ? 'pos' : 'neg')}">${pct(r.btcPerf3D)}</span>
+        </div>
+        <div class="detail-ligne"><span>${r.biais === 'short' ? 'Zone cible (-1 % à -8 %)' : 'Zone cible (1 % – 8 %)'}</span>
+          <span>${chk(r.biais === 'short'
+            ? (r.btcPerf3D <= -1 && r.btcPerf3D >= -8)
+            : (r.btcPerf3D >= 1 && r.btcPerf3D <= 8))}</span>
         </div>
       </div>
 
