@@ -1394,18 +1394,13 @@ const daily = (t.token === 'BTC' && btcDaily) ? btcDaily
 async function prendreSnapshot() {
   const btn = document.getElementById('btn-snapshot');
   const status = document.getElementById('scanner-status');
-
   if (!scannerResults.length) {
     alert('Lance d\'abord le scanner (⟳ Actualiser) avant de prendre un snapshot.');
     return;
   }
-
   btn.disabled = true;
   if (status) status.textContent = '📸 Snapshot en cours...';
-
-  // Récupérer BTC pour le snapshot
   const btcResult = scannerResults.find(r => r.token === 'BTC');
-
   const snapshots = scannerResults.map(r => ({
     id: `snap-${r.token}-${Date.now()}`,
     user_id: 'a494d43c-a915-4f34-875c-2b0ebd84d5fb',
@@ -1428,17 +1423,20 @@ async function prendreSnapshot() {
     bb_bandwidth: r.bb?.bandwidth ? Math.round(r.bb.bandwidth * 10000) / 100 : null,
     atr_pct: r.atrPct ? Math.round(r.atrPct * 100) / 100 : null
   }));
-
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/scanner_snapshots`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/scanner_snapshots`, {
       method: 'POST',
       headers: { ...headers(), 'Prefer': 'return=minimal' },
       body: JSON.stringify(snapshots)
     });
-
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error('Erreur Supabase snapshot:', res.status, errText);
+      if (status) status.textContent = `❌ Erreur snapshot (${res.status})`;
+      return;
+    }
     const now = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     if (status) status.textContent = `📸 Snapshot sauvegardé à ${now}`;
-
     // Alertes setup ≥ 3
     const alertes = snapshots.filter(s => s.score >= 3);
     if (alertes.length) {
